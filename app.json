@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "kindle-tmp",
-    "slug": "kindle-tmp",
+    "name": "Kindle Highlights",
+    "slug": "kindle-highlights",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -13,9 +13,15 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.harry.kindlehighlights",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to capture photos of book highlights for text extraction."
+      }
     },
     "android": {
+      "package": "com.harry.kindlehighlights",
+      "permissions": ["android.permission.CAMERA"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -27,7 +33,9 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-camera",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
