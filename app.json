@@ -21,7 +21,10 @@
     },
     "android": {
       "package": "com.harry.kindlehighlights",
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -38,6 +41,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "4bccc619-b2f2-4d35-8ad0-97ad97dd4634"
+      }
     }
   }
 }
