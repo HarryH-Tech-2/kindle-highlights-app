@@ -34,8 +34,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-camera",
-      "expo-sqlite"
+      "expo-camera"
     ],
     "experiments": {
       "typedRoutes": true
