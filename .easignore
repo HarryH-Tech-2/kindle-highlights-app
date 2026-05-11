@@ -1,0 +1,51 @@
+# Files excluded from the EAS Build upload archive. EAS will reinstall
+# dependencies and rebuild all native artifacts on its build servers, so the
+# upload only needs source + config + the prebuilt `android/` project (minus
+# its build outputs).
+#
+# Syntax mirrors .gitignore. EAS falls back to .gitignore when this file is
+# absent, but our .gitignore omits `android/` (we commit the prebuild folder
+# so Gradle uses our edits), which means the giant Gradle build outputs would
+# otherwise ride along on every upload.
+
+# --- Dependencies (reinstalled by EAS) ----------------------------------
+node_modules/
+
+# --- Android Gradle / native build outputs ------------------------------
+android/build/
+android/app/build/
+android/.gradle/
+android/.cxx/
+android/app/.cxx/
+android/captures/
+android/local.properties
+
+# --- iOS build outputs (not building iOS, but cheap insurance) ----------
+ios/build/
+ios/Pods/
+ios/DerivedData/
+
+# --- Expo / Metro caches ------------------------------------------------
+.expo/
+.expo-shared/
+dist/
+web-build/
+.metro-health-check*
+
+# --- Test / coverage output --------------------------------------------
+coverage/
+
+# --- Local logs and OS junk --------------------------------------------
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+
+# --- Local build artifacts ---------------------------------------------
+*.apk
+*.aab
+*.tsbuildinfo
+
+# --- VCS internals (EAS doesn't need history) --------------------------
+.git/

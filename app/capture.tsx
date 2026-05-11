@@ -1,81 +1,104 @@
-import { useRef, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Alert, Linking } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useRouter } from 'expo-router';
+import { useEffect, useRef } from 'react';
+import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
-import { recognizeFromUri } from '@/src/ocr/recognize';
+import { extractHighlightedText } from '@/src/ocr/highlight';
+import { getDb } from '@/src/db/client';
+import { incrementUsageCount } from '@/src/db/meta';
+import { useTheme } from '@/src/theme/ThemeContext';
+
+// This screen runs OCR only. The camera launch + permission/quota gating
+// lives in the library FAB so there's no transition screen between tapping
+// the FAB and the system camera coming up. We arrive here with a `uri` from
+// the camera, extract the highlight, then forward to /review.
 
 export default function Capture() {
   const router = useRouter();
-  const [permission, requestPermission] = useCameraPermissions();
-  const cameraRef = useRef<CameraView | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { colors } = useTheme();
+  const { uri } = useLocalSearchParams<{ uri?: string }>();
+  // Guard against the effect re-running (e.g. from a re-render) and kicking
+  // off a second extraction for the same photo.
+  const startedRef = useRef(false);
 
-  if (!permission) return <View />;
-  if (!permission.granted) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
-        <Text style={{ textAlign: 'center' }}>
-          Camera access is needed to capture highlights.
-        </Text>
-        <Pressable
-          onPress={async () => {
-            const r = await requestPermission();
-            if (!r.granted) Linking.openSettings();
-          }}
-          style={{ padding: 12, backgroundColor: '#007aff', borderRadius: 8 }}
-        >
-          <Text style={{ color: '#fff' }}>Allow camera</Text>
-        </Pressable>
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
 
-  const handleSnap = async () => {
-    if (!cameraRef.current || busy) return;
-    setBusy(true);
-    try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9, skipProcessing: true });
-      if (!photo?.uri) throw new Error('No photo URI');
-      const text = await recognizeFromUri(photo.uri);
-      // Discard the photo immediately
-      try { await FileSystem.deleteAsync(photo.uri, { idempotent: true }); } catch {}
-
-      if (!text) {
-        Alert.alert('No text detected', 'Try again, or enter the highlight manually.', [
-          { text: 'Retry', style: 'cancel' },
-          { text: 'Enter manually', onPress: () => router.replace({ pathname: '/review', params: { text: '' } }) }
-        ]);
+    (async () => {
+      if (!uri) {
+        Alert.alert('Capture failed', 'No photo was provided.');
+        router.back();
         return;
       }
-      router.replace({ pathname: '/review', params: { text } });
-    } catch (e: any) {
-      Alert.alert('Capture failed', e?.message ?? 'Unknown error');
-    } finally {
-      setBusy(false);
-    }
-  };
+      try {
+        const result = await extractHighlightedText(uri);
+        // Discard the photo whether or not extraction succeeded.
+        try { await FileSystem.deleteAsync(uri, { idempotent: true }); } catch {}
+
+        if (!result.ok) {
+          const { title, message } = describeFailure(result.reason);
+          const detail = 'detail' in result && result.detail ? `\n\n(${result.detail})` : '';
+          Alert.alert(title, message + detail);
+          router.back();
+          return;
+        }
+        // Only count successful extractions against the free quota.
+        const db = await getDb();
+        await incrementUsageCount(db);
+        router.replace({ pathname: '/review', params: { text: result.text } });
+      } catch (e: any) {
+        console.warn('[capture] failed', e);
+        Alert.alert('Capture failed', e?.message ?? 'Unknown error');
+        router.back();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
-      <View style={{ position: 'absolute', bottom: 32, left: 0, right: 0, alignItems: 'center' }}>
-        {busy ? (
-          <ActivityIndicator size="large" color="#fff" />
-        ) : (
-          <Pressable
-            onPress={handleSnap}
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 36,
-              backgroundColor: '#fff',
-              borderWidth: 4,
-              borderColor: '#ccc'
-            }}
-          />
-        )}
-      </View>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        gap: 16,
+      }}
+    >
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={{ color: colors.text, fontSize: 18, fontWeight: '600' }}>
+        Extracting text…
+      </Text>
+      <Text style={{ color: colors.textMuted, fontSize: 14, textAlign: 'center' }}>
+        This usually takes a few seconds.
+      </Text>
     </View>
   );
+}
+
+function describeFailure(reason: 'no-highlight' | 'no-api-key' | 'api-error' | 'network') {
+  switch (reason) {
+    case 'no-highlight':
+      return {
+        title: 'No highlight detected',
+        message: 'Highlight a passage on your Kindle, frame the screen, and try again.',
+      };
+    case 'no-api-key':
+      return {
+        title: 'Missing API key',
+        message: 'Set EXPO_PUBLIC_ANTHROPIC_API_KEY in your .env file and rebuild.',
+      };
+    case 'network':
+      return {
+        title: 'No connection',
+        message: 'Could not reach the Anthropic API. Check your internet connection and try again.',
+      };
+    case 'api-error':
+    default:
+      return {
+        title: 'Extraction failed',
+        message: 'The extraction service returned an error. Try again in a moment.',
+      };
+  }
 }

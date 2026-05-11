@@ -9,9 +9,11 @@ import { renderBookExport } from '@/src/export/markdown';
 import { shareMarkdown } from '@/src/export/share';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { HighlightCard } from '@/src/components/HighlightCard';
+import { useTheme } from '@/src/theme/ThemeContext';
 
 export default function BookDetail() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const bookId = Number(id);
   const [book, setBook] = useState<Book | null>(null);
@@ -30,7 +32,7 @@ export default function BookDetail() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  if (!book) return <View />;
+  if (!book) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
 
   const onSaveEdit = async () => {
     const db = await getDb();
@@ -60,43 +62,77 @@ export default function BookDetail() {
     await shareMarkdown(book.title, md);
   };
 
+  const inputStyle = {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 10,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  };
+
   return (
-    <View style={{ flex: 1 }}>
-      <View style={{ padding: 16, borderBottomWidth: 1, borderColor: '#eee' }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ padding: 16, borderBottomWidth: 1, borderColor: colors.border }}>
         {editing ? (
           <View style={{ gap: 8 }}>
-            <TextInput value={title} onChangeText={setTitle} placeholder="Title"
-              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10 }} />
-            <TextInput value={author} onChangeText={setAuthor} placeholder="Author"
-              style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10 }} />
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Title"
+              placeholderTextColor={colors.textSubtle}
+              style={inputStyle}
+            />
+            <TextInput
+              value={author}
+              onChangeText={setAuthor}
+              placeholder="Author"
+              placeholderTextColor={colors.textSubtle}
+              style={inputStyle}
+            />
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Pressable onPress={onSaveEdit}
-                style={{ padding: 10, backgroundColor: '#007aff', borderRadius: 8 }}>
-                <Text style={{ color: '#fff' }}>Save</Text>
+              <Pressable
+                onPress={onSaveEdit}
+                style={{ padding: 10, backgroundColor: colors.primary, borderRadius: 8 }}
+              >
+                <Text style={{ color: colors.primaryText, fontWeight: '600' }}>Save</Text>
               </Pressable>
               <Pressable onPress={() => setEditing(false)} style={{ padding: 10 }}>
-                <Text>Cancel</Text>
+                <Text style={{ color: colors.textMuted }}>Cancel</Text>
               </Pressable>
             </View>
           </View>
         ) : (
           <Pressable onPress={() => setEditing(true)}>
-            <Text style={{ fontSize: 22, fontWeight: '600' }}>{book.title}</Text>
-            {book.author && <Text style={{ color: '#666' }}>{book.author}</Text>}
+            <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>
+              {book.title}
+            </Text>
+            {book.author && (
+              <Text style={{ color: colors.textMuted, marginTop: 2 }}>{book.author}</Text>
+            )}
           </Pressable>
         )}
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-          <Pressable onPress={onExport}><Text style={{ color: '#007aff' }}>Export Markdown</Text></Pressable>
-          <Pressable onPress={onDelete}><Text style={{ color: '#c00' }}>Delete book</Text></Pressable>
+        <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
+          <Pressable onPress={onExport}>
+            <Text style={{ color: colors.primary, fontWeight: '500' }}>Export Markdown</Text>
+          </Pressable>
+          <Pressable onPress={onDelete}>
+            <Text style={{ color: colors.danger, fontWeight: '500' }}>Delete book</Text>
+          </Pressable>
         </View>
       </View>
       <FlatList
         data={highlights}
         keyExtractor={(h) => String(h.id)}
+        contentContainerStyle={{ padding: 16 }}
         renderItem={({ item }) => (
           <HighlightCard highlight={item} onPress={() => router.push(`/highlight/${item.id}`)} />
         )}
-        ListEmptyComponent={<Text style={{ padding: 24, color: '#666' }}>No highlights yet for this book.</Text>}
+        ListEmptyComponent={
+          <Text style={{ padding: 24, color: colors.textMuted, textAlign: 'center' }}>
+            No highlights yet for this book.
+          </Text>
+        }
       />
     </View>
   );

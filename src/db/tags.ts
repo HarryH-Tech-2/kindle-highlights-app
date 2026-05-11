@@ -17,10 +17,16 @@ export async function listTags(db: DbExec): Promise<Tag[]> {
 export async function listTagsWithCounts(
   db: DbExec
 ): Promise<Array<{ id: number; name: string; count: number }>> {
+  // LEFT JOIN so tags with zero highlights still appear (the user might create
+  // a tag from the Tags tab before attaching it to anything). The COUNT
+  // ignores soft-deleted highlights so the number matches what the user sees
+  // on the tag detail page.
   return db.getAllAsync(
-    `SELECT t.id, t.name, COUNT(ht.highlight_id) AS count
+    `SELECT t.id, t.name,
+            COUNT(CASE WHEN h.deleted_at IS NULL THEN 1 END) AS count
      FROM tags t
-     INNER JOIN highlight_tags ht ON ht.tag_id = t.id
+     LEFT JOIN highlight_tags ht ON ht.tag_id = t.id
+     LEFT JOIN highlights h ON h.id = ht.highlight_id
      GROUP BY t.id, t.name
      ORDER BY count DESC, t.name COLLATE NOCASE ASC`
   );

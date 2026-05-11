@@ -8,7 +8,14 @@ import {
 import type { Book, HighlightWithRelations } from '../../src/db/types';
 
 const mkBook = (over: Partial<Book> = {}): Book => ({
-  id: 1, title: 'Atomic Habits', author: 'James Clear', created_at: 0, ...over
+  id: 1,
+  title: 'Atomic Habits',
+  author: 'James Clear',
+  created_at: 0,
+  updated_at: 0,
+  remote_id: null,
+  deleted_at: null,
+  ...over,
 });
 
 const mkHighlight = (over: Partial<HighlightWithRelations> = {}): HighlightWithRelations => ({
@@ -18,9 +25,13 @@ const mkHighlight = (over: Partial<HighlightWithRelations> = {}): HighlightWithR
   note: null,
   created_at: new Date('2026-05-05T10:00:00Z').getTime(),
   updated_at: new Date('2026-05-05T10:00:00Z').getTime(),
+  remote_id: null,
+  deleted_at: null,
+  style: null,
   book: mkBook(),
   tags: [],
-  ...over
+  styleParsed: null,
+  ...over,
 });
 
 describe('renderHighlight', () => {

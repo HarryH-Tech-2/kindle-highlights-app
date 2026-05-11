@@ -73,15 +73,18 @@ describe('highlights', () => {
     expect(await getHighlight(db, h.id)).toBeNull();
   });
 
-  test('deleteHighlight removes the row and its tag joins', async () => {
+  test('deleteHighlight soft-deletes (getHighlight returns null, tag joins preserved for sync)', async () => {
+    // Soft delete is required so the tombstone can propagate via Firestore sync.
+    // Tag joins stay attached to the row so the highlight's last-known tags can
+    // still be serialized into the tombstone payload.
     const { db, book } = await setup();
     const h = await createHighlight(db, { book_id: book.id, text: 't', tag_names: ['x'] });
     await deleteHighlight(db, h.id);
     expect(await getHighlight(db, h.id)).toBeNull();
-    const joins = await db.getAllAsync(
-      'SELECT * FROM highlight_tags WHERE highlight_id = ?',
+    const raw = await db.getFirstAsync<{ deleted_at: number | null }>(
+      'SELECT deleted_at FROM highlights WHERE id = ?',
       [h.id]
     );
-    expect(joins).toEqual([]);
+    expect(raw?.deleted_at).not.toBeNull();
   });
 });

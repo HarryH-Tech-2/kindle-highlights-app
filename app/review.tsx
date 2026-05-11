@@ -4,13 +4,17 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getDb } from '@/src/db/client';
 import * as Highlights from '@/src/db/highlights';
 import * as Tags from '@/src/db/tags';
+import type { HighlightStyle } from '@/src/db/types';
 import { useBooks } from '@/src/hooks/useBooks';
 import { BookPicker } from '@/src/components/BookPicker';
 import { TagInput } from '@/src/components/TagInput';
+import { HighlightStylePicker } from '@/src/components/HighlightStylePicker';
 import { confirm } from '@/src/components/ConfirmDialog';
+import { useTheme } from '@/src/theme/ThemeContext';
 
 export default function Review() {
   const router = useRouter();
+  const { colors } = useTheme();
   const params = useLocalSearchParams<{ text?: string; id?: string }>();
   const editingId = params.id ? Number(params.id) : null;
 
@@ -19,6 +23,7 @@ export default function Review() {
   const [bookId, setBookId] = useState<number | null>(null);
   const [tagNames, setTagNames] = useState<string[]>([]);
   const [note, setNote] = useState('');
+  const [style, setStyle] = useState<HighlightStyle | null>(null);
   const [allTagNames, setAllTagNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(editingId != null);
   const [saving, setSaving] = useState(false);
@@ -35,6 +40,7 @@ export default function Review() {
           setBookId(h.book_id);
           setTagNames(h.tags.map((tg) => tg.name));
           setNote(h.note ?? '');
+          setStyle(h.styleParsed);
         }
         setLoading(false);
       }
@@ -51,14 +57,16 @@ export default function Review() {
         await Highlights.updateHighlight(await getDb(), editingId, {
           text: text.trim(),
           note: note.trim() || null,
-          tag_names: tagNames
+          tag_names: tagNames,
+          style,
         });
       } else {
         await Highlights.createHighlight(await getDb(), {
           book_id: bookId!,
           text: text.trim(),
           note: note.trim() || null,
-          tag_names: tagNames
+          tag_names: tagNames,
+          style,
         });
       }
       router.replace('/');
@@ -79,26 +87,46 @@ export default function Review() {
   };
 
   if (loading) {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
+    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}><ActivityIndicator color={colors.primary} /></View>;
   }
 
+  const inputStyle = {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    color: colors.text,
+    backgroundColor: colors.surface,
+    textAlignVertical: 'top' as const,
+  };
+
+  const labelStyle = { fontWeight: '600' as const, marginBottom: 6, color: colors.text };
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+    <ScrollView
+      style={{ backgroundColor: colors.bg }}
+      contentContainerStyle={{ padding: 16, gap: 16 }}
+    >
       <View>
-        <Text style={{ fontWeight: '600', marginBottom: 6 }}>Highlight text</Text>
+        <Text style={labelStyle}>Highlight text</Text>
         <TextInput
           value={text}
           onChangeText={setText}
           multiline
+          placeholderTextColor={colors.textSubtle}
           style={{
-            borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10,
-            minHeight: 120, textAlignVertical: 'top'
+            ...inputStyle,
+            minHeight: 120,
+            // Surface the chosen style directly on the highlight text so the
+            // picker below acts as a live editor rather than a preview.
+            color: style?.color ?? colors.text,
+            fontStyle: style?.italic ? 'italic' : 'normal',
           }}
         />
       </View>
 
       <View>
-        <Text style={{ fontWeight: '600', marginBottom: 6 }}>Book</Text>
+        <Text style={labelStyle}>Book</Text>
         <BookPicker
           books={books}
           selectedId={bookId}
@@ -112,20 +140,23 @@ export default function Review() {
       </View>
 
       <View>
-        <Text style={{ fontWeight: '600', marginBottom: 6 }}>Tags</Text>
+        <Text style={labelStyle}>Tags</Text>
         <TagInput value={tagNames} onChange={setTagNames} suggestions={allTagNames} />
       </View>
 
       <View>
-        <Text style={{ fontWeight: '600', marginBottom: 6 }}>Note (optional)</Text>
+        <Text style={labelStyle}>Style</Text>
+        <HighlightStylePicker value={style} onChange={setStyle} />
+      </View>
+
+      <View>
+        <Text style={labelStyle}>Note (optional)</Text>
         <TextInput
           value={note}
           onChangeText={setNote}
           multiline
-          style={{
-            borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10,
-            minHeight: 60, textAlignVertical: 'top'
-          }}
+          placeholderTextColor={colors.textSubtle}
+          style={{ ...inputStyle, minHeight: 60 }}
         />
       </View>
 
@@ -134,15 +165,26 @@ export default function Review() {
           onPress={onSave}
           disabled={!canSave}
           style={{
-            flex: 1, padding: 14, borderRadius: 8,
-            backgroundColor: canSave ? '#007aff' : '#aac',
+            flex: 1, padding: 14, borderRadius: 10,
+            backgroundColor: canSave ? colors.primary : colors.border,
             alignItems: 'center'
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '600' }}>{saving ? 'Saving…' : 'Save'}</Text>
+          <Text style={{ color: canSave ? colors.primaryText : colors.textSubtle, fontWeight: '600' }}>
+            {saving ? 'Saving…' : 'Save'}
+          </Text>
         </Pressable>
-        <Pressable onPress={onDiscard} style={{ padding: 14 }}>
-          <Text>Discard</Text>
+        <Pressable
+          onPress={onDiscard}
+          style={{
+            flex: 1, padding: 14, borderRadius: 10,
+            backgroundColor: colors.surfaceAlt,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center'
+          }}
+        >
+          <Text style={{ color: colors.danger, fontWeight: '600' }}>Discard</Text>
         </Pressable>
       </View>
     </ScrollView>

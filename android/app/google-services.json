@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "203266428663",
+    "project_id": "kindle-highlights-app-c83ed",
+    "storage_bucket": "kindle-highlights-app-c83ed.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:203266428663:android:8278247c801aee05fe8df2",
+        "android_client_info": {
+          "package_name": "com.harry.kindlehighlights"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "203266428663-himd7pm9h4tm9lf3klce41kc8dhslm25.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.harry.kindlehighlights",
+            "certificate_hash": "4fd2803609c43afadf7362547d470386f9cb5013"
+          }
+        },
+        {
+          "client_id": "203266428663-9b84u9os48klro3193jumiq1gjsek897.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjd5GhpBTKzwyIhhGc06vsoyhHWD-Adrs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "203266428663-9b84u9os48klro3193jumiq1gjsek897.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

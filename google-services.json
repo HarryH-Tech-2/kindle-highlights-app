@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "203266428663-jq2fldnoi000s7rpisns383q7ut2e153.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.harry.kindlehighlights",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "203266428663-9b84u9os48klro3193jumiq1gjsek897.apps.googleusercontent.com",
           "client_type": 3
         }

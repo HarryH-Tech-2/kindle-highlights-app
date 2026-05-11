@@ -1,6 +1,6 @@
 import type { DbExec } from './client';
 
-export const currentSchemaVersion = 1;
+export const currentSchemaVersion = 3;
 
 const migrations: Record<number, string> = {
   1: `
@@ -48,6 +48,26 @@ const migrations: Record<number, string> = {
       INSERT INTO highlights_fts(highlights_fts, rowid, text, note) VALUES('delete', old.id, old.text, old.note);
       INSERT INTO highlights_fts(rowid, text, note) VALUES (new.id, new.text, new.note);
     END;
+  `,
+  2: `
+    -- Cross-device sync support. remote_id is a UUID assigned by whichever device
+    -- creates the row first; deleted_at is a soft-delete tombstone so deletes can
+    -- propagate. updated_at is backfilled from created_at for any pre-v2 rows.
+    ALTER TABLE books ADD COLUMN remote_id TEXT;
+    ALTER TABLE books ADD COLUMN deleted_at INTEGER;
+    ALTER TABLE books ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;
+    UPDATE books SET updated_at = created_at WHERE updated_at = 0;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_books_remote_id ON books(remote_id) WHERE remote_id IS NOT NULL;
+
+    ALTER TABLE highlights ADD COLUMN remote_id TEXT;
+    ALTER TABLE highlights ADD COLUMN deleted_at INTEGER;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_highlights_remote_id ON highlights(remote_id) WHERE remote_id IS NOT NULL;
+  `,
+  3: `
+    -- Per-highlight display style (color + italic) stored as JSON. Nullable
+    -- means "no style chosen yet" so existing rows render with the default
+    -- text color and weight.
+    ALTER TABLE highlights ADD COLUMN style TEXT;
   `
 };
 
