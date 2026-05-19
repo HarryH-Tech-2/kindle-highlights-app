@@ -30,7 +30,7 @@ Subscriptions are processed by Google Play Billing. We never see or store your p
 
 ## No analytics or tracking
 
-We do not use third-party analytics, advertising SDKs, behavioural tracking, fingerprinting, or any cross-app identifiers. The only network calls this app makes are:
+We do not use third-party analytics, advertising SDKs, behavioral tracking, fingerprinting, or any cross-app identifiers. The only network calls this app makes are:
 
 1. Extraction requests to the Anthropic API.
 2. Authentication via Google Sign-In.

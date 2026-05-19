@@ -5,7 +5,7 @@
 //   - 'photo':    a bundled PNG/JPG from assets/beautify
 //
 // Each background carries a `textColor` ('light' | 'dark') describing which
-// text colour reads best on it. Photos use a dark scrim regardless so light
+// text color reads best on it. Photos use a dark scrim regardless so light
 // text always pops, but we still keep the field to make swapping easy.
 
 export type GradientBackground = {

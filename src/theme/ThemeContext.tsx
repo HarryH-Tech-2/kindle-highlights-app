@@ -84,7 +84,7 @@ export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
     // Defensive fallback so screens rendered outside the provider (tests,
-    // storybook) still get sane colours instead of crashing.
+    // storybook) still get sane colors instead of crashing.
     return {
       mode: 'light',
       setMode: async () => {},

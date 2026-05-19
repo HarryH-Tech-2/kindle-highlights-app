@@ -5,7 +5,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 
 // Small inline picker shown in the review screen. We keep the option set
 // deliberately tight (a handful of curated swatches + an italic toggle) so
-// the UI stays self-explanatory and we don't end up with a colour wheel.
+// the UI stays self-explanatory and we don't end up with a color wheel.
 
 type Props = {
   value: HighlightStyle | null;
@@ -42,7 +42,7 @@ export function HighlightStylePicker({ value, onChange }: Props) {
 
   return (
     <View style={{ gap: 12 }}>
-      {/* Colour swatches */}
+      {/* Color swatches */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {COLORS.map((c) => {
           const selected = currentColor === c.value;

@@ -77,7 +77,7 @@ describe('signInWithGoogle', () => {
   test('returns null if user cancels the Google picker', async () => {
     const { authModule, auth, google } = makeFakes();
     google.GoogleSignin.signIn = jest.fn(async () => {
-      throw Object.assign(new Error('cancelled'), { code: 'SIGN_IN_CANCELLED' });
+      throw Object.assign(new Error('canceled'), { code: 'SIGN_IN_CANCELLED' });
     });
     _setAuthForTests({
       authModule: authModule as unknown as Parameters<typeof _setAuthForTests>[0]['authModule'],

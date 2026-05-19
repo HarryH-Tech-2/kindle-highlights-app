@@ -83,7 +83,7 @@ export default function Capture() {
   );
 }
 
-// Returns the captured image URI, or null if the user cancelled.
+// Returns the captured image URI, or null if the user canceled.
 async function captureFromCamera(): Promise<string | null> {
   const picked = await ImagePicker.launchCameraAsync({
     allowsEditing: false,

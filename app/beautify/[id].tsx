@@ -308,7 +308,7 @@ function Card({
   highlight: HighlightWithRelations;
 }) {
   const light = bg.textColor === 'light';
-  // High-contrast text colours regardless of theme — these go to other apps.
+  // High-contrast text colors regardless of theme — these go to other apps.
   const fg = light ? '#ffffff' : '#0f172a';
   const fgMuted = light ? 'rgba(255,255,255,0.85)' : 'rgba(15,23,42,0.7)';
   const fgSubtle = light ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.5)';
