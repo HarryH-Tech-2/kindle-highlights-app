@@ -2,22 +2,27 @@ import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 import { extractHighlightedText } from '@/src/ocr/highlight';
-import { getDb } from '@/src/db/client';
-import { incrementUsageCount } from '@/src/db/meta';
 import { useTheme } from '@/src/theme/ThemeContext';
 
-// This screen runs OCR only. The camera launch + permission/quota gating
-// lives in the library FAB so there's no transition screen between tapping
-// the FAB and the system camera coming up. We arrive here with a `uri` from
-// the camera, extract the highlight, then forward to /review.
+// This screen owns both the camera launch AND the OCR pass. Launching the
+// camera here (rather than from the library FAB) means that after the user
+// confirms their photo, the system camera dismisses straight onto this
+// screen's "Extracting text…" state — they never see a frame of the home
+// screen in between. The permission/quota/tips gating still lives in the
+// library FAB so this screen can trust that capture is allowed.
+//
+// `uri` is supported as a param for backwards compatibility with anything
+// that already navigates here with a pre-captured image; when omitted (the
+// common path now) we launch the camera ourselves on mount.
 
 export default function Capture() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { uri } = useLocalSearchParams<{ uri?: string }>();
+  const { uri: paramUri } = useLocalSearchParams<{ uri?: string }>();
   // Guard against the effect re-running (e.g. from a re-render) and kicking
-  // off a second extraction for the same photo.
+  // off a second camera launch / extraction for the same mount.
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -25,12 +30,13 @@ export default function Capture() {
     startedRef.current = true;
 
     (async () => {
-      if (!uri) {
-        Alert.alert('Capture failed', 'No photo was provided.');
-        router.back();
-        return;
-      }
       try {
+        const uri = paramUri ?? (await captureFromCamera());
+        // User backed out of the camera — return to the library.
+        if (!uri) {
+          router.back();
+          return;
+        }
         const result = await extractHighlightedText(uri);
         // Discard the photo whether or not extraction succeeded.
         try { await FileSystem.deleteAsync(uri, { idempotent: true }); } catch {}
@@ -42,9 +48,9 @@ export default function Capture() {
           router.back();
           return;
         }
-        // Only count successful extractions against the free quota.
-        const db = await getDb();
-        await incrementUsageCount(db);
+        // Quota is derived from the number of saved highlights (see
+        // getUsageCount), so there's nothing to increment here — the count
+        // ticks up when /review actually saves.
         router.replace({ pathname: '/review', params: { text: result.text } });
       } catch (e: any) {
         console.warn('[capture] failed', e);
@@ -75,6 +81,19 @@ export default function Capture() {
       </Text>
     </View>
   );
+}
+
+// Returns the captured image URI, or null if the user cancelled.
+async function captureFromCamera(): Promise<string | null> {
+  const picked = await ImagePicker.launchCameraAsync({
+    allowsEditing: false,
+    quality: 0.9,
+    cameraType: ImagePicker.CameraType.back,
+  });
+  if (picked.canceled) return null;
+  const uri = picked.assets?.[0]?.uri;
+  if (!uri) throw new Error('No photo was returned by the camera.');
+  return uri;
 }
 
 function describeFailure(reason: 'no-highlight' | 'no-api-key' | 'api-error' | 'network') {

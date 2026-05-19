@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TextInput, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
 import * as Books from '@/src/db/books';
 import * as Highlights from '@/src/db/highlights';
@@ -103,13 +104,34 @@ export default function BookDetail() {
             </View>
           </View>
         ) : (
-          <Pressable onPress={() => setEditing(true)}>
-            <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>
-              {book.title}
-            </Text>
-            {book.author && (
-              <Text style={{ color: colors.textMuted, marginTop: 2 }}>{book.author}</Text>
-            )}
+          <Pressable
+            onPress={() => setEditing(true)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 10,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>
+                {book.title}
+              </Text>
+              {book.author && (
+                <Text style={{ color: colors.textMuted, marginTop: 2 }}>{book.author}</Text>
+              )}
+            </View>
+            <View
+              style={{
+                padding: 6,
+                borderRadius: 8,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Ionicons name="pencil" size={16} color={colors.textMuted} />
+            </View>
           </Pressable>
         )}
         <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>

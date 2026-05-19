@@ -109,10 +109,10 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.harry.kindlehighlights'
+    namespace 'com.harry.highlightcapture'
     defaultConfig {
 missingDimensionStrategy "store", "play"
-        applicationId 'com.harry.kindlehighlights'
+        applicationId 'com.harry.highlightcapture'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

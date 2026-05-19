@@ -11,6 +11,12 @@
 //   - `deleted_at` is a tombstone, not a hard delete. Firestore docs are kept
 //     so other devices can observe the deletion via their `updated_at > since`
 //     query the next time they sync.
+//   - `tier` records the user's subscription state at write time. It's metadata
+//     for cost-bucketing and analytics on the server side — pulls ignore it.
+//     A user who upgrades will have older docs stamped `'free'` and newer ones
+//     `'pro'`; that's intentional, not a bug.
+
+export type Tier = 'free' | 'pro';
 
 export type RemoteBook = {
   remote_id: string;
@@ -19,6 +25,7 @@ export type RemoteBook = {
   created_at: number;
   updated_at: number;
   deleted_at: number | null;
+  tier: Tier;
 };
 
 export type RemoteHighlight = {
@@ -33,6 +40,7 @@ export type RemoteHighlight = {
   created_at: number;
   updated_at: number;
   deleted_at: number | null;
+  tier: Tier;
 };
 
 // Firestore enforces a 500-op limit per WriteBatch. Pick a slightly lower number

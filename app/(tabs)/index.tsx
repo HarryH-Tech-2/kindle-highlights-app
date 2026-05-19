@@ -85,8 +85,11 @@ export default function Library() {
   }, [query]);
 
   // Run the gate checks (permissions + free-tier quota) and then either open
-  // the tips modal or jump straight to the camera. Centralising this here
-  // means the /capture route only has to worry about extraction.
+  // the tips modal or hand off to /capture, which owns the camera launch.
+  // Letting /capture launch the camera (rather than doing it here) means
+  // that when the system camera modal dismisses, the screen behind it is
+  // the "Extracting text…" view — the user never sees a frame of the home
+  // screen flashing in between.
   const beginCapture = async () => {
     if (!permission?.granted) {
       const r = await requestPermission();
@@ -114,25 +117,10 @@ export default function Library() {
     }
 
     if (await hasDismissedCaptureTips(db)) {
-      await launchCamera();
+      router.push('/capture');
     } else {
       setTipsVisible(true);
     }
-  };
-
-  const launchCamera = async () => {
-    const picked = await ImagePicker.launchCameraAsync({
-      allowsEditing: false,
-      quality: 0.9,
-      cameraType: ImagePicker.CameraType.back,
-    });
-    if (picked.canceled) return;
-    const uri = picked.assets?.[0]?.uri;
-    if (!uri) {
-      Alert.alert('Capture failed', 'No photo was returned by the camera.');
-      return;
-    }
-    router.push({ pathname: '/capture', params: { uri } });
   };
 
   const onTipsAcknowledge = async (dontShowAgain: boolean) => {
@@ -141,7 +129,7 @@ export default function Library() {
       const db = await getDb();
       await setCaptureTipsDismissed(db);
     }
-    await launchCamera();
+    router.push('/capture');
   };
 
   const showingSearch = query.trim().length > 0;

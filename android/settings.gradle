@@ -44,7 +44,7 @@ if (getRNMinorVersion() >= 75) {
   }
 }
 
-rootProject.name = 'Kindle Highlights'
+rootProject.name = 'Highlight Capture for Books'
 
 dependencyResolutionManagement {
   versionCatalogs {

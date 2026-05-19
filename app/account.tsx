@@ -40,7 +40,8 @@ export default function AccountScreen() {
     if (busy) return;
     setBusy('signin');
     try {
-      await signInWithGoogle();
+      const signedIn = await signInWithGoogle();
+      if (signedIn) router.replace('/');
     } catch (e: unknown) {
       Alert.alert('Sign-in failed', (e as Error)?.message ?? 'Unknown error');
     } finally {
@@ -65,13 +66,6 @@ export default function AccountScreen() {
     setBusy('sync');
     try {
       const db = await getDb();
-      if (!(await Meta.isSubscribed(db))) {
-        Alert.alert(
-          'Pro required',
-          'Cross-device sync is part of Kindle Highlights Pro. Subscribe from the upgrade screen.'
-        );
-        return;
-      }
       const result = await runSync(db, user.uid);
       setLastSyncedAt((await Meta.getLastSyncedAt(db)) || null);
       Alert.alert('Sync complete', `Pushed ${result.pushed} • Pulled ${result.pulled}`);
@@ -131,7 +125,7 @@ export default function AccountScreen() {
                 letterSpacing: -0.5,
               }}
             >
-              Kindle Highlights
+              Highlight Capture for Books
             </Text>
             <Text
               style={{

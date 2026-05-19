@@ -11,7 +11,7 @@
 
 module.exports = {
   expo: {
-    name: 'Kindle Highlights',
+    name: 'Highlight Capture for Books',
     slug: 'kindle-highlights',
     version: '1.0.0',
     orientation: 'portrait',
@@ -25,14 +25,14 @@ module.exports = {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.harry.kindlehighlights',
+      bundleIdentifier: 'com.harry.highlightcapture',
       infoPlist: {
         NSCameraUsageDescription:
           'Used to capture photos of book highlights for text extraction.',
       },
     },
     android: {
-      package: 'com.harry.kindlehighlights',
+      package: 'com.harry.highlightcapture',
       googleServicesFile:
         process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
       permissions: [
@@ -55,6 +55,16 @@ module.exports = {
       'react-native-iap',
       '@react-native-firebase/app',
       '@react-native-google-signin/google-signin',
+      [
+        'expo-media-library',
+        {
+          photosPermission:
+            'Allow Highlight Capture to save beautified quote cards to your photo library.',
+          savePhotosPermission:
+            'Allow Highlight Capture to save beautified quote cards to your photo library.',
+          isAccessMediaLocationEnabled: false,
+        },
+      ],
       [
         'expo-build-properties',
         {

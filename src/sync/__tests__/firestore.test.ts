@@ -28,6 +28,7 @@ const BOOK = (over: Partial<RemoteBook> = {}): RemoteBook => ({
   created_at: 1000,
   updated_at: 1000,
   deleted_at: null,
+  tier: 'pro',
   ...over,
 });
 
@@ -41,6 +42,7 @@ const HL = (over: Partial<RemoteHighlight> = {}): RemoteHighlight => ({
   created_at: 1000,
   updated_at: 1000,
   deleted_at: null,
+  tier: 'pro',
   ...over,
 });
 

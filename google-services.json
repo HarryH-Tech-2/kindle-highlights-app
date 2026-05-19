@@ -1,49 +1,41 @@
 {
   "project_info": {
-    "project_number": "203266428663",
-    "project_id": "kindle-highlights-app-c83ed",
-    "storage_bucket": "kindle-highlights-app-c83ed.firebasestorage.app"
+    "project_number": "1012430542584",
+    "project_id": "highlight-capture",
+    "storage_bucket": "highlight-capture.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:203266428663:android:8278247c801aee05fe8df2",
+        "mobilesdk_app_id": "1:1012430542584:android:86dd39f9fc327e5c718d0d",
         "android_client_info": {
-          "package_name": "com.harry.kindlehighlights"
+          "package_name": "com.harry.highlightcapture"
         }
       },
       "oauth_client": [
         {
-          "client_id": "203266428663-himd7pm9h4tm9lf3klce41kc8dhslm25.apps.googleusercontent.com",
+          "client_id": "1012430542584-aa0qbm75b23kip5hlkq3h8qfjhirh2hs.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.harry.kindlehighlights",
-            "certificate_hash": "4fd2803609c43afadf7362547d470386f9cb5013"
-          }
-        },
-        {
-          "client_id": "203266428663-jq2fldnoi000s7rpisns383q7ut2e153.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.harry.kindlehighlights",
+            "package_name": "com.harry.highlightcapture",
             "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },
         {
-          "client_id": "203266428663-9b84u9os48klro3193jumiq1gjsek897.apps.googleusercontent.com",
+          "client_id": "1012430542584-mc53je2kk2oljag996vbq3lk4gsg85cp.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDjd5GhpBTKzwyIhhGc06vsoyhHWD-Adrs"
+          "current_key": "AIzaSyAmksuc78APdMWUqgrJ62RHVmOpzfwiicI"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "203266428663-9b84u9os48klro3193jumiq1gjsek897.apps.googleusercontent.com",
+              "client_id": "1012430542584-mc53je2kk2oljag996vbq3lk4gsg85cp.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

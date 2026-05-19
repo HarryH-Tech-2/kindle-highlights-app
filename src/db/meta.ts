@@ -20,7 +20,6 @@ export async function setMeta(db: DbExec, key: string, value: string): Promise<v
 }
 
 const ONBOARDING_KEY = 'onboarding_seen';
-const USAGE_COUNT_KEY = 'usage_count';
 const SUBSCRIBED_KEY = 'subscribed';
 const SKIP_CAPTURE_TIPS_KEY = 'skip_capture_tips';
 
@@ -34,16 +33,15 @@ export async function markOnboardingSeen(db: DbExec): Promise<void> {
   await setMeta(db, ONBOARDING_KEY, 'true');
 }
 
+// Free-tier usage is the user's current number of (non-deleted) highlights.
+// Deriving it from the highlights table — rather than tracking a separate
+// counter — keeps the X/10 indicator honest when a user deletes a highlight
+// and also resets naturally to 0 when local data is wiped on account switch.
 export async function getUsageCount(db: DbExec): Promise<number> {
-  const v = await getMeta(db, USAGE_COUNT_KEY);
-  const n = v ? parseInt(v, 10) : 0;
-  return Number.isFinite(n) ? n : 0;
-}
-
-export async function incrementUsageCount(db: DbExec): Promise<number> {
-  const n = (await getUsageCount(db)) + 1;
-  await setMeta(db, USAGE_COUNT_KEY, String(n));
-  return n;
+  const row = await db.getFirstAsync<{ c: number }>(
+    'SELECT COUNT(*) AS c FROM highlights WHERE deleted_at IS NULL'
+  );
+  return row?.c ?? 0;
 }
 
 export async function isSubscribed(db: DbExec): Promise<boolean> {
@@ -93,4 +91,25 @@ export async function setCurrentUserId(db: DbExec, uid: string | null): Promise<
 
 export async function resetSyncCursor(db: DbExec): Promise<void> {
   await db.runAsync('DELETE FROM meta WHERE key = ?', [LAST_SYNCED_AT_KEY]);
+}
+
+// Wipes everything that belongs to the previously-signed-in user, so a fresh
+// account on the same device starts clean and doesn't see the prior user's
+// highlights, books, or tags. Called from runSync the moment an account
+// switch is detected. Device-level prefs (onboarding seen, skip capture tips,
+// schema version) are intentionally preserved.
+export async function wipeUserScopedData(db: DbExec): Promise<void> {
+  await db.execAsync('PRAGMA foreign_keys = ON;');
+  // Order matters: child rows before parents to keep FK cascade noise minimal.
+  // The triggers on `highlights` will keep the FTS index in sync.
+  await db.runAsync('DELETE FROM highlight_tags');
+  await db.runAsync('DELETE FROM highlights');
+  await db.runAsync('DELETE FROM tags');
+  await db.runAsync('DELETE FROM books');
+  // Reset sync cursor + cached subscription tier. Subscription state is
+  // re-derived per-account (and re-checked by the IAP layer on next launch).
+  await db.runAsync('DELETE FROM meta WHERE key IN (?, ?)', [
+    LAST_SYNCED_AT_KEY,
+    SUBSCRIBED_KEY,
+  ]);
 }

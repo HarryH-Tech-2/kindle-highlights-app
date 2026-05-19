@@ -51,7 +51,7 @@ describe('tags', () => {
     expect((await getTagsForHighlight(db, hid)).map((t) => t.name).sort()).toEqual(['b', 'c']);
   });
 
-  test('listTagsWithCounts returns usage counts and skips orphans', async () => {
+  test('listTagsWithCounts returns accurate per-tag highlight counts', async () => {
     const db = await setup();
     const book = await createBook(db, { title: 'B' });
     const h1 = await insertHighlight(db, book.id, 'one');
@@ -63,6 +63,8 @@ describe('tags', () => {
     const map = Object.fromEntries(counts.map((c) => [c.name, c.count]));
     expect(map.x).toBe(2);
     expect(map.y).toBe(1);
-    expect(map.orphan).toBeUndefined();
+    // Tags with no attached (non-deleted) highlights should report 0, not 1
+    // — the LEFT JOIN's unmatched row used to be miscounted as a real hit.
+    expect(map.orphan).toBe(0);
   });
 });

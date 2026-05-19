@@ -6,13 +6,13 @@ done, future EAS builds pick up `google-services.json` automatically.
 ## 1. Create the Firebase project
 
 1. Visit https://console.firebase.google.com → **Add project** → name it
-   `kindle-highlights`.
+   `highlight-capture`.
 2. You can disable Google Analytics — it's not needed.
 
 ## 2. Register the Android app
 
 1. Inside the project: **Add app** → Android.
-2. Package name: `com.harry.kindlehighlights` (must match `app.json` →
+2. Package name: `com.harry.highlightcapture` (must match `app.config.js` →
    `android.package`).
 3. Add **both** debug and release SHA-1 fingerprints. Get them from EAS:
 
@@ -35,8 +35,8 @@ done, future EAS builds pick up `google-services.json` automatically.
 1. Click **Download google-services.json**.
 2. Place it at the **project root** (next to `package.json`):
    `C:\Users\harry\Documents\code\kindle-screenshot-app\google-services.json`.
-3. `app.json` already references it via
-   `"android": { "googleServicesFile": "./google-services.json" }`.
+3. `app.config.js` already references it via
+   `android: { googleServicesFile: './google-services.json' }`.
 4. **Do not commit it** — it contains keys (it's already in `.gitignore`).
 
 ## 4. Enable Authentication

@@ -155,13 +155,13 @@ export default function Paywall() {
         }}
       >
         <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
-          Kindle Highlights Pro
+          Highlight Capture Pro
         </Text>
         <Text style={{ fontSize: 14, color: colors.textMuted }}>
           Billed monthly. Cancel any time.
         </Text>
         <Text style={{ fontSize: 22, fontWeight: '700', marginTop: 4, color: colors.text }}>
-          {loadingOffer ? 'Loading…' : offer?.priceLabel ?? '$2.00 / month'}
+          {loadingOffer ? 'Loading…' : `Just ${offer?.priceLabel ?? '$2.00 / month'}`}
         </Text>
       </View>
 

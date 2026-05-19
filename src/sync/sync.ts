@@ -2,11 +2,15 @@
 // app/_layout.tsx. Single entry point: runSync(db, uid).
 //
 // Algorithm (last-write-wins, online-required):
-//   1. Pre-check: caller must be Pro. We refuse to sync free-tier accounts so
-//      Firestore costs are bounded by the subscriber count.
+//   1. Read the user's current subscription tier — we stamp it onto every doc
+//      we push so the server can bucket free vs pro traffic. Free users are
+//      capped at FREE_EXTRACTION_LIMIT highlights upstream of sync (in the
+//      capture flow), so cost stays bounded.
 //   2. Detect account switch: if the locally stored user id differs from the
-//      one we're about to sync as, reset the "last_synced_at" cursor so we
-//      don't bring another user's high-water mark into a fresh account.
+//      one we're about to sync as, wipe all user-scoped local data (books,
+//      highlights, tags, sync cursor). This keeps highlights private per
+//      Google account — the new user starts with a clean slate and then
+//      pulls their own data from Firestore.
 //   3. Push: every row whose updated_at is strictly greater than the cursor
 //      (including soft-deletes) goes up. Highlights serialize their parent
 //      book's remote_id and the current set of tag names.
@@ -40,6 +44,7 @@ import {
   pullHighlightsSince,
   type RemoteBook,
   type RemoteHighlight,
+  type Tier,
 } from './firestore';
 import { uuidv4 } from './uuid';
 
@@ -51,17 +56,26 @@ export type SyncResult = {
 
 export async function runSync(db: DbExec, uid: string): Promise<SyncResult> {
   if (!uid) throw new Error('runSync requires a signed-in user id');
-  if (!(await Meta.isSubscribed(db))) {
-    throw new Error('Sync requires a Pro subscription');
-  }
+  const tier: Tier = (await Meta.isSubscribed(db)) ? 'pro' : 'free';
   const startedAt = Date.now();
 
   // Detect account switches by comparing the uid we're about to sync as
-  // against whatever we last synced as. A mismatch means the cursor refers
-  // to a different user's data and would otherwise hide their first pull.
+  // against whatever we last synced as. A mismatch with a previously-known
+  // uid means the local DB still holds another user's books/highlights/tags;
+  // if we left those in place they would (a) be visible to the new account
+  // in the UI and (b) get pushed up to the new account's Firestore on the
+  // next push. Wipe everything user-scoped (which includes the sync cursor)
+  // before re-stamping the current user id.
+  //
+  // The `lastUid !== null` guard avoids wiping on the very first sync after
+  // install, when the user may have already created highlights while signing
+  // in for the first time. Only an actual switch between two distinct uids
+  // should trigger the wipe.
   const lastUid = await Meta.getCurrentUserId(db);
+  if (lastUid !== null && lastUid !== uid) {
+    await Meta.wipeUserScopedData(db);
+  }
   if (lastUid !== uid) {
-    await Meta.resetSyncCursor(db);
     await Meta.setCurrentUserId(db, uid);
   }
   const since = await Meta.getLastSyncedAt(db);
@@ -78,9 +92,9 @@ export async function runSync(db: DbExec, uid: string): Promise<SyncResult> {
     dirtyHighlights.map((h) => ensureRemoteId(db, 'highlights', h))
   );
 
-  const remoteBooks: RemoteBook[] = booksToPush.map(toRemoteBook);
+  const remoteBooks: RemoteBook[] = booksToPush.map((b) => toRemoteBook(b, tier));
   const remoteHighlights: RemoteHighlight[] = await Promise.all(
-    highlightsToPush.map((h) => toRemoteHighlight(db, h))
+    highlightsToPush.map((h) => toRemoteHighlight(db, h, tier))
   );
 
   await pushBooks(uid, remoteBooks);
@@ -119,7 +133,7 @@ async function ensureRemoteId<T extends Book | Highlight>(
   return { ...row, remote_id: id };
 }
 
-function toRemoteBook(b: Book & { remote_id: string }): RemoteBook {
+function toRemoteBook(b: Book & { remote_id: string }, tier: Tier): RemoteBook {
   return {
     remote_id: b.remote_id,
     title: b.title,
@@ -127,12 +141,14 @@ function toRemoteBook(b: Book & { remote_id: string }): RemoteBook {
     created_at: b.created_at,
     updated_at: b.updated_at,
     deleted_at: b.deleted_at,
+    tier,
   };
 }
 
 async function toRemoteHighlight(
   db: DbExec,
-  h: Highlight & { remote_id: string }
+  h: Highlight & { remote_id: string },
+  tier: Tier
 ): Promise<RemoteHighlight> {
   // Look up parent book without filtering soft-deletes — a highlight tombstone
   // can outlive its book tombstone in the dirty list, but we still need the
@@ -155,6 +171,7 @@ async function toRemoteHighlight(
     created_at: h.created_at,
     updated_at: h.updated_at,
     deleted_at: h.deleted_at,
+    tier,
   };
 }
 

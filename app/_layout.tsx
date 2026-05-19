@@ -3,7 +3,7 @@ import { Stack, useRouter } from 'expo-router';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { initDb } from '@/src/db/init';
 import { getDb } from '@/src/db/client';
-import { hasSeenOnboarding, isSubscribed } from '@/src/db/meta';
+import { hasSeenOnboarding } from '@/src/db/meta';
 import {
   configureGoogleSignIn,
   getCurrentUser,
@@ -12,11 +12,15 @@ import {
 } from '@/src/auth/firebase';
 import { runSync } from '@/src/sync/sync';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
+import { BackgroundLayer } from '@/src/theme/BackgroundLayer';
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <RootLayoutInner />
+      <View style={{ flex: 1 }}>
+        <BackgroundLayer />
+        <RootLayoutInner />
+      </View>
     </ThemeProvider>
   );
 }
@@ -54,9 +58,11 @@ function RootLayoutInner() {
     })();
   }, []);
 
-  // Auth subscription + auto-sync on sign-in for Pro users. We keep `user` in
-  // state here (rather than only inside screens) so the routing effect below
-  // can react to sign-in/out without re-mounting the whole tree.
+  // Auth subscription + auto-sync on sign-in for all signed-in users. Tier is
+  // stamped on each pushed doc inside runSync, so free and pro can co-exist
+  // in Firestore. We keep `user` in state here (rather than only inside
+  // screens) so the routing effect below can react to sign-in/out without
+  // re-mounting the whole tree.
   useEffect(() => {
     let unsub: (() => void) | undefined;
     try {
@@ -66,7 +72,6 @@ function RootLayoutInner() {
         if (!u) return;
         try {
           const db = await getDb();
-          if (!(await isSubscribed(db))) return;
           await runSync(db, u.uid);
         } catch {
           // Silent — sync failures shouldn't block the app or alert the user.
@@ -151,6 +156,7 @@ function RootLayoutInner() {
       <Stack.Screen name="review" options={{ title: 'Review' }} />
       <Stack.Screen name="book/[id]" options={{ title: 'Book' }} />
       <Stack.Screen name="highlight/[id]" options={{ title: 'Highlight' }} />
+      <Stack.Screen name="beautify/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="tag/[name]" options={{ title: 'Tag' }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="paywall" options={{ title: 'Upgrade' }} />

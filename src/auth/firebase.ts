@@ -16,7 +16,7 @@
 // → "Web SDK configuration"). Keeping it as a constant rather than env var
 // because it's a public client ID, not a secret.
 export const GOOGLE_WEB_CLIENT_ID =
-  '203266428663-9b84u9os48klro3193jumiq1gjsek897.apps.googleusercontent.com';
+  '1012430542584-mc53je2kk2oljag996vbq3lk4gsg85cp.apps.googleusercontent.com';
 
 type AuthDefaultExport = typeof import('@react-native-firebase/auth').default;
 type AuthInstance = ReturnType<AuthDefaultExport>;

@@ -68,7 +68,7 @@ export async function getMonthlySubscription(): Promise<SubscriptionOffer | null
   const priceLabel = androidPrice ?? sub.localizedPrice ?? '$2.00 / month';
   return {
     productId: sub.productId,
-    title: sub.title ?? 'Kindle Highlights Pro',
+    title: sub.title ?? 'Highlight Capture Pro',
     priceLabel,
   };
 }

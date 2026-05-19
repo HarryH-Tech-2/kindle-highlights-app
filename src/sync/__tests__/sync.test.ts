@@ -24,17 +24,38 @@ afterEach(() => {
 });
 
 describe('runSync — guards', () => {
-  test('throws when not subscribed', async () => {
+  test('throws on empty uid', async () => {
+    await setup();
+    await expect(runSync(db, '')).rejects.toThrow(/signed-in user/);
+  });
+});
+
+describe('runSync — tier stamping', () => {
+  test('pushes with tier="free" for unsubscribed users', async () => {
     ({ db } = makeTestDb());
     await runMigrations(db);
     fake = makeFakeFirestore();
     _setFirestoreForTests(fake as unknown as Parameters<typeof _setFirestoreForTests>[0]);
-    await expect(runSync(db, 'u1')).rejects.toThrow(/Pro subscription/);
+    // No setSubscribed call — defaults to free.
+    const book = await Books.createBook(db, { title: 'A' });
+    await Highlights.createHighlight(db, { book_id: book.id, text: 'hi' });
+    await runSync(db, 'u1');
+    const remoteBooks = fake.__collections.get('users/u1/books')!;
+    const remoteHighlights = fake.__collections.get('users/u1/highlights')!;
+    const b = Array.from(remoteBooks.values())[0] as { tier: string };
+    const h = Array.from(remoteHighlights.values())[0] as { tier: string };
+    expect(b.tier).toBe('free');
+    expect(h.tier).toBe('free');
   });
 
-  test('throws on empty uid', async () => {
-    await setup();
-    await expect(runSync(db, '')).rejects.toThrow(/signed-in user/);
+  test('pushes with tier="pro" for subscribed users', async () => {
+    await setup(); // setup() sets subscribed = true
+    const book = await Books.createBook(db, { title: 'A' });
+    await Highlights.createHighlight(db, { book_id: book.id, text: 'hi' });
+    await runSync(db, 'u1');
+    const remoteHighlights = fake.__collections.get('users/u1/highlights')!;
+    const h = Array.from(remoteHighlights.values())[0] as { tier: string };
+    expect(h.tier).toBe('pro');
   });
 });
 
@@ -137,11 +158,17 @@ describe('runSync — pull', () => {
     expect(reloaded?.title).toBe('Local');
   });
 
-  test('account switch resets cursor', async () => {
+  test('account switch wipes the previous user\'s local data', async () => {
     await setup();
-    await Books.createBook(db, { title: 'A' });
+    const book = await Books.createBook(db, { title: 'A' });
+    await Highlights.createHighlight(db, {
+      book_id: book.id,
+      text: 'u1 secret',
+      tag_names: ['private'],
+    });
     await runSync(db, 'u1');
-    // Sign in as u2; the cursor should be reset so u2's full set comes down.
+    // Sign in as u2; u1's local books/highlights/tags should be gone and
+    // only u2's remote data should come down.
     fake.__collections.set(
       'users/u2/books',
       new Map([
@@ -160,7 +187,12 @@ describe('runSync — pull', () => {
     );
     await runSync(db, 'u2');
     const titles = (await Books.listBooks(db)).map((b) => b.title).sort();
-    expect(titles).toEqual(['A', 'For U2']);
+    expect(titles).toEqual(['For U2']);
+    expect(await Highlights.listAllHighlights(db)).toHaveLength(0);
+    // And u1's Firestore docs were not re-pushed under u2 (which would have
+    // happened if we'd only reset the cursor without wiping local data).
+    expect(fake.__collections.get('users/u2/books')?.size).toBe(1);
+    expect(fake.__collections.get('users/u2/highlights')?.size ?? 0).toBe(0);
   });
 
   test('reconciles tags from remote tag_names array', async () => {

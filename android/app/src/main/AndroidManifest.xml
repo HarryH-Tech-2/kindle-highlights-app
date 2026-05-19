@@ -28,8 +28,8 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="myapp"/>
-        <data android:scheme="com.harry.kindlehighlights"/>
-        <data android:scheme="exp+kindle-highlights"/>
+        <data android:scheme="com.harry.highlightcapture"/>
+        <data android:scheme="exp+highlight-capture"/>
       </intent-filter>
     </activity>
     <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" android:exported="false"/>
