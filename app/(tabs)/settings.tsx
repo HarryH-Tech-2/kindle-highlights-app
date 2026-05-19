@@ -14,15 +14,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
 import * as Books from '@/src/db/books';
 import * as Highlights from '@/src/db/highlights';
+import { wipeUserScopedData } from '@/src/db/meta';
 import { renderLibrary } from '@/src/export/markdown';
 import { shareMarkdown } from '@/src/export/share';
 import { useTheme } from '@/src/theme/ThemeContext';
-import {
-  STYLE_META,
-  previewSwatches,
-  type ThemeMode,
-  type ThemeStyle,
-} from '@/src/theme/colors';
+import { type ThemeMode } from '@/src/theme/colors';
 import { signOut } from '@/src/auth/firebase';
 import { useAuthUser } from '@/src/auth/session';
 
@@ -30,7 +26,7 @@ const FEEDBACK_EMAIL = 'contact@harryh.tech';
 
 export default function Settings() {
   const router = useRouter();
-  const { colors, mode, setMode, style, setStyle, isDark } = useTheme();
+  const { colors, mode, setMode } = useTheme();
   const { user } = useAuthUser();
   const [busy, setBusy] = useState<null | 'export' | 'clear' | 'signout'>(null);
 
@@ -99,6 +95,10 @@ export default function Settings() {
           setBusy('signout');
           try {
             await signOut();
+            // Wipe the previous account's data so the next sign-in (even
+            // mid-session) starts clean and pulls only its own highlights.
+            const db = await getDb();
+            await wipeUserScopedData(db);
           } catch (e: any) {
             Alert.alert('Sign-out failed', e?.message ?? 'Unknown error');
           } finally {
@@ -174,7 +174,7 @@ export default function Settings() {
             gap: 4,
           }}
         >
-          {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => {
+          {(['light', 'dark'] as ThemeMode[]).map((m) => {
             const active = mode === m;
             return (
               <Pressable
@@ -197,7 +197,7 @@ export default function Settings() {
                 }}
               >
                 <Ionicons
-                  name={m === 'light' ? 'sunny' : m === 'dark' ? 'moon' : 'phone-portrait'}
+                  name={m === 'light' ? 'sunny' : 'moon'}
                   size={14}
                   color={active ? colors.text : colors.textMuted}
                 />
@@ -216,35 +216,6 @@ export default function Settings() {
           })}
         </View>
       </Section>
-
-      {/* Theme */}
-      <View style={{ gap: 10 }}>
-        <Text
-          style={{
-            fontSize: 12,
-            fontWeight: '700',
-            color: colors.textMuted,
-            textTransform: 'uppercase',
-            letterSpacing: 0.8,
-            paddingHorizontal: 4,
-          }}
-        >
-          Theme
-        </Text>
-        <View style={{ gap: 10 }}>
-          {STYLE_META.map((s) => (
-            <ThemeCard
-              key={s.id}
-              id={s.id}
-              label={s.label}
-              description={s.description}
-              selected={style === s.id}
-              brightness={isDark ? 'dark' : 'light'}
-              onPress={() => setStyle(s.id)}
-            />
-          ))}
-        </View>
-      </View>
 
       {/* Data */}
       <Section title="Your library">
@@ -321,121 +292,6 @@ export default function Settings() {
         Highlight Capture v{Constants.expoConfig?.version ?? '0.0.0'}
       </Text>
     </ScrollView>
-  );
-}
-
-function ThemeCard({
-  id,
-  label,
-  description,
-  selected,
-  brightness,
-  onPress,
-}: {
-  id: ThemeStyle;
-  label: string;
-  description: string;
-  selected: boolean;
-  brightness: 'light' | 'dark';
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
-  // Preview swatches reflect the user's current light/dark choice so the
-  // chip they tap looks like what the app will become.
-  const sw = previewSwatches(id, brightness);
-  // Highlight ring uses the primary of the *target* theme when selected, the
-  // current theme's primary when not, dialled down to a subtle hairline.
-  const ringColor = selected ? sw.primary : colors.border;
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: colors.surface,
-        borderRadius: 16,
-        borderWidth: selected ? 2 : 1,
-        borderColor: ringColor,
-        padding: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 14,
-        opacity: pressed ? 0.85 : 1,
-      })}
-    >
-      {/* Mini "device" preview — the theme's bg with a strip of surface,
-          primary, and accent layered inside it. Gives an at-a-glance
-          impression of the palette without needing to apply it first. */}
-      <View
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 12,
-          backgroundColor: sw.bg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          overflow: 'hidden',
-          padding: 6,
-          gap: 4,
-        }}
-      >
-        <View
-          style={{
-            height: 14,
-            borderRadius: 4,
-            backgroundColor: sw.surface,
-          }}
-        />
-        <View style={{ flexDirection: 'row', gap: 4, flex: 1 }}>
-          <View
-            style={{
-              flex: 1,
-              borderRadius: 4,
-              backgroundColor: sw.primary,
-            }}
-          />
-          <View
-            style={{
-              flex: 1,
-              borderRadius: 4,
-              backgroundColor: sw.accent,
-            }}
-          />
-        </View>
-      </View>
-
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
-          {label}
-        </Text>
-        <Text
-          style={{
-            color: colors.textMuted,
-            fontSize: 13,
-            marginTop: 2,
-          }}
-        >
-          {description}
-        </Text>
-      </View>
-
-      {/* Selection indicator — filled check when selected, empty ring when
-          not. Uses the *current* primary so the tick reads on this theme. */}
-      <View
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: 12,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: selected ? colors.primary : 'transparent',
-          borderWidth: selected ? 0 : 1.5,
-          borderColor: colors.border,
-        }}
-      >
-        {selected && (
-          <Ionicons name="checkmark" size={16} color={colors.primaryText} />
-        )}
-      </View>
-    </Pressable>
   );
 }
 

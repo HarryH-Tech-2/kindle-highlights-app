@@ -54,6 +54,10 @@ export default function AccountScreen() {
     setBusy('signout');
     try {
       await signOut();
+      // Wipe the previous account's data so the next sign-in starts clean
+      // and pulls only its own highlights from Firestore.
+      const db = await getDb();
+      await Meta.wipeUserScopedData(db);
     } catch (e: unknown) {
       Alert.alert('Sign-out failed', (e as Error)?.message ?? 'Unknown error');
     } finally {

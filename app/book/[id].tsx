@@ -11,6 +11,7 @@ import { shareMarkdown } from '@/src/export/share';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { HighlightCard } from '@/src/components/HighlightCard';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { scheduleSync } from '@/src/sync/scheduler';
 
 export default function BookDetail() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function BookDetail() {
     });
     setBook(updated);
     setEditing(false);
+    scheduleSync();
   };
 
   const onDelete = async () => {
@@ -54,6 +56,7 @@ export default function BookDetail() {
     })) {
       const db = await getDb();
       await Books.deleteBook(db, bookId);
+      scheduleSync();
       router.replace('/');
     }
   };

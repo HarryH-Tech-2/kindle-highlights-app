@@ -21,6 +21,7 @@ import { TagInput } from '@/src/components/TagInput';
 import { HighlightStylePicker } from '@/src/components/HighlightStylePicker';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { scheduleSync } from '@/src/sync/scheduler';
 
 export default function Review() {
   const router = useRouter();
@@ -80,6 +81,7 @@ export default function Review() {
           style,
         });
       }
+      scheduleSync();
       router.replace('/');
     } finally {
       setSaving(false);

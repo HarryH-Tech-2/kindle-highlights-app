@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getDb } from '@/src/db/client';
 import * as Books from '@/src/db/books';
+import { scheduleSync } from '@/src/sync/scheduler';
 import type { Book, NewBookInput } from '@/src/db/types';
 
 export function useBooks() {
@@ -19,6 +20,7 @@ export function useBooks() {
     const db = await getDb();
     const book = await Books.createBook(db, input);
     await refresh();
+    scheduleSync();
     return book;
   }, [refresh]);
 

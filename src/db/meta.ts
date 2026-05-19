@@ -96,8 +96,9 @@ export async function resetSyncCursor(db: DbExec): Promise<void> {
 // Wipes everything that belongs to the previously-signed-in user, so a fresh
 // account on the same device starts clean and doesn't see the prior user's
 // highlights, books, or tags. Called from runSync the moment an account
-// switch is detected. Device-level prefs (onboarding seen, skip capture tips,
-// schema version) are intentionally preserved.
+// switch is detected, and from the sign-out handlers so a sign-out always
+// leaves the local DB blank. Device-level prefs (onboarding seen, skip
+// capture tips, schema version) are intentionally preserved.
 export async function wipeUserScopedData(db: DbExec): Promise<void> {
   await db.execAsync('PRAGMA foreign_keys = ON;');
   // Order matters: child rows before parents to keep FK cascade noise minimal.
@@ -106,10 +107,12 @@ export async function wipeUserScopedData(db: DbExec): Promise<void> {
   await db.runAsync('DELETE FROM highlights');
   await db.runAsync('DELETE FROM tags');
   await db.runAsync('DELETE FROM books');
-  // Reset sync cursor + cached subscription tier. Subscription state is
+  // Reset sync cursor, cached subscription tier, and the remembered uid so
+  // the next sign-in is treated as a first sync. Subscription state is
   // re-derived per-account (and re-checked by the IAP layer on next launch).
-  await db.runAsync('DELETE FROM meta WHERE key IN (?, ?)', [
+  await db.runAsync('DELETE FROM meta WHERE key IN (?, ?, ?)', [
     LAST_SYNCED_AT_KEY,
     SUBSCRIBED_KEY,
+    CURRENT_USER_ID_KEY,
   ]);
 }

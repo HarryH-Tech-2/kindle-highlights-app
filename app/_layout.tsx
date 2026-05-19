@@ -12,15 +12,11 @@ import {
 } from '@/src/auth/firebase';
 import { runSync } from '@/src/sync/sync';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
-import { BackgroundLayer } from '@/src/theme/BackgroundLayer';
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <View style={{ flex: 1 }}>
-        <BackgroundLayer />
-        <RootLayoutInner />
-      </View>
+      <RootLayoutInner />
     </ThemeProvider>
   );
 }
@@ -73,8 +69,13 @@ function RootLayoutInner() {
         try {
           const db = await getDb();
           await runSync(db, u.uid);
-        } catch {
-          // Silent — sync failures shouldn't block the app or alert the user.
+        } catch (e) {
+          // Background sync failures shouldn't alert the user, but they
+          // should be visible in dev logs — silent failures here are the
+          // exact thing that makes "my highlights aren't syncing" bugs
+          // impossible to triage. The Account screen's Sync Now button
+          // surfaces the same error via Alert when the user invokes it.
+          console.warn('[sync] background sync failed', e);
         }
       });
     } catch {

@@ -8,6 +8,7 @@ import type { HighlightWithRelations } from '@/src/db/types';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { accentFor } from '@/src/theme/colors';
+import { scheduleSync } from '@/src/sync/scheduler';
 
 export default function HighlightDetail() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function HighlightDetail() {
       destructive: true
     })) {
       await Highlights.deleteHighlight(await getDb(), hid);
+      scheduleSync();
       router.back();
     }
   };
