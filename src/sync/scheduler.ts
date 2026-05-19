@@ -34,13 +34,16 @@ export function scheduleSync(): void {
     return;
   }
   if (!uid) return;
+  // Capture in a const so the timer closure sees a non-null uid — `let uid`
+  // declared above doesn't narrow across the closure boundary.
+  const capturedUid = uid;
 
   // Reset the debounce window on each call so the timer only fires once the
   // user has been quiet for DEBOUNCE_MS.
   if (pendingTimer) clearTimeout(pendingTimer);
   pendingTimer = setTimeout(() => {
     pendingTimer = null;
-    void runScheduled(uid);
+    void runScheduled(capturedUid);
   }, DEBOUNCE_MS);
 }
 
@@ -71,7 +74,7 @@ async function runScheduled(uid: string): Promise<void> {
 }
 
 // Test seam: flush any pending debounced sync immediately and wait for it
-// to settle. Lets unit tests assert post-mutation sync behaviour without
+// to settle. Lets unit tests assert post-mutation sync behavior without
 // real timers.
 export async function _flushScheduledSyncForTests(): Promise<void> {
   if (pendingTimer) {

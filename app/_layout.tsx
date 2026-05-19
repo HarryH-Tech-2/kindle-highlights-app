@@ -35,7 +35,7 @@ function RootLayoutInner() {
   });
   const [seenOnboarding, setSeenOnboarding] = useState(false);
   // Tracks whether the user was just on the login wall. Lets us push them into
-  // the library after sign-in instead of stranding them on /account.
+  // the library after sign-in instead of stranding them on /login.
   const wasSignedOutRef = useRef<boolean>(!user);
 
   // One-time bootstrap: init the DB, then learn whether the user has finished
@@ -86,7 +86,7 @@ function RootLayoutInner() {
 
   // Routing rules, evaluated whenever the relevant state changes:
   //   1. Haven't finished onboarding → /onboarding
-  //   2. Onboarded but signed out → /account (login wall)
+  //   2. Onboarded but signed out → /login (login wall)
   //   3. Just signed in (was on login wall) → / (into the library)
   //   4. Onboarded and signed in → leave them wherever they are
   // We defer the redirect with setTimeout(0) so the Stack has a chance to mount
@@ -100,7 +100,7 @@ function RootLayoutInner() {
     }
     if (!user) {
       wasSignedOutRef.current = true;
-      const id = setTimeout(() => router.replace('/account'), 0);
+      const id = setTimeout(() => router.replace('/login'), 0);
       return () => clearTimeout(id);
     }
     if (wasSignedOutRef.current) {
@@ -162,15 +162,7 @@ function RootLayoutInner() {
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="paywall" options={{ title: 'Upgrade' }} />
       <Stack.Screen name="privacy" options={{ title: 'Privacy & terms' }} />
-      <Stack.Screen
-        name="account"
-        options={{
-          // When signed out, /account acts as a login wall — hide the header so
-          // there's no back button and the design is full-bleed.
-          headerShown: user !== null,
-          title: 'Account & Sync',
-        }}
-      />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
     </Stack>
   );
 }

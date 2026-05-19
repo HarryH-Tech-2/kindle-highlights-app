@@ -1,6 +1,6 @@
 import type { DbExec } from './client';
 
-export const currentSchemaVersion = 3;
+export const currentSchemaVersion = 4;
 
 const migrations: Record<number, string> = {
   1: `
@@ -68,7 +68,25 @@ const migrations: Record<number, string> = {
     -- means "no style chosen yet" so existing rows render with the default
     -- text color and weight.
     ALTER TABLE highlights ADD COLUMN style TEXT;
-  `
+  `,
+  4: `
+    -- Promote tags to first-class synced entities so standalone tags
+    -- (created on the Tags tab without being attached to a highlight)
+    -- survive sign-out and reach other devices. remote_id == name, so
+    -- two devices that mint the same tag converge on a single Firestore
+    -- document rather than duplicating.
+    ALTER TABLE tags ADD COLUMN remote_id TEXT;
+    ALTER TABLE tags ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE tags ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE tags ADD COLUMN deleted_at INTEGER;
+    UPDATE tags
+      SET remote_id = name,
+          created_at = CAST(strftime('%s','now') AS INTEGER) * 1000,
+          updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000
+      WHERE remote_id IS NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_remote_id
+      ON tags(remote_id) WHERE remote_id IS NOT NULL;
+  `,
 };
 
 export async function runMigrations(db: DbExec): Promise<void> {

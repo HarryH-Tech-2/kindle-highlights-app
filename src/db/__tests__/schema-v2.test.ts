@@ -66,6 +66,15 @@ describe('schema v2', () => {
       );
       INSERT INTO highlights (id, book_id, text, note, created_at, updated_at)
       VALUES (1, 1, 'hello', NULL, 2000, 2000);
+      CREATE TABLE tags (
+        id   INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+      );
+      CREATE TABLE highlight_tags (
+        highlight_id INTEGER NOT NULL,
+        tag_id       INTEGER NOT NULL,
+        PRIMARY KEY (highlight_id, tag_id)
+      );
     `);
     await runMigrations(db);
     const book = raw.prepare('SELECT * FROM books WHERE id = 1').get() as {

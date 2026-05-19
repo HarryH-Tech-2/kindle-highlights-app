@@ -25,6 +25,14 @@ export type Highlight = {
 export type Tag = {
   id: number;
   name: string;
+  // Sync fields. `remote_id` is the same string as `name` — tag identity is
+  // its lowercased name, both locally (UNIQUE constraint on name) and in
+  // Firestore (doc id == name), so two devices that mint the same tag name
+  // converge on the same document rather than duplicating.
+  remote_id: string | null;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
 };
 
 // Visual style for a saved highlight. Both fields are optional so the absence

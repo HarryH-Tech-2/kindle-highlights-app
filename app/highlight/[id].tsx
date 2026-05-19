@@ -66,7 +66,7 @@ export default function HighlightDetail() {
       >
         {/* Hero card — the highlight text itself, in the user's chosen style.
             A left accent stripe (matched to the book) ties it visually to its
-            source and adds the only colour on the screen by default. */}
+            source and adds the only color on the screen by default. */}
         <View
           style={{
             flexDirection: 'row',

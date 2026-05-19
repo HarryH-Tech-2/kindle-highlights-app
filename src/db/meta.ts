@@ -1,4 +1,11 @@
 import type { DbExec } from './client';
+import { getCurrentUser } from '@/src/auth/firebase';
+
+// Email allowlist that gets a free Pro pass regardless of the local
+// SUBSCRIBED_KEY flag — the app owner uses this to QA Pro-only flows
+// without going through the Play Store purchase loop. Checked case-
+// insensitively against the current Firebase user's email.
+const OWNER_EMAILS = new Set(['harryiswriting@gmail.com']);
 
 // The `meta` table is a generic key-value store created in the initial migration.
 // We use it for app-level flags (onboarding seen, free-tier usage count, etc.)
@@ -45,6 +52,15 @@ export async function getUsageCount(db: DbExec): Promise<number> {
 }
 
 export async function isSubscribed(db: DbExec): Promise<boolean> {
+  // Owner allowlist bypass — kept above the meta read so the owner gets Pro
+  // even on a fresh install where the flag has never been set.
+  try {
+    const email = getCurrentUser()?.email?.toLowerCase() ?? null;
+    if (email && OWNER_EMAILS.has(email)) return true;
+  } catch {
+    // Native auth module missing (Jest / dev build pre-EAS-rebuild). Fall
+    // through to the local flag, which is what these callers expect.
+  }
   return (await getMeta(db, SUBSCRIBED_KEY)) === 'true';
 }
 

@@ -22,6 +22,7 @@ import {
   isSubscribed,
   setCaptureTipsDismissed,
 } from '@/src/db/meta';
+import { onSyncCompleted } from '@/src/sync/events';
 
 export default function Library() {
   const router = useRouter();
@@ -65,8 +66,12 @@ export default function Library() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  // Re-read after a background sync finishes — typically the post-sign-in
+  // pull, where this screen mounted before the user's remote rows landed.
+  useEffect(() => onSyncCompleted(() => { void load(); }), [load]);
+
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     (async () => {
       if (!query.trim()) {
         setSearchHighlights([]);
@@ -75,12 +80,12 @@ export default function Library() {
       }
       const db = await getDb();
       const r = await search(db, query);
-      if (cancelled) return;
+      if (canceled) return;
       setSearchHighlights(r.highlights);
       setSearchBooks(r.books);
     })();
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [query]);
 

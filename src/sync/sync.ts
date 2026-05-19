@@ -32,7 +32,7 @@
 // time, but `merge: true` makes that idempotent.
 
 import type { DbExec } from '@/src/db/client';
-import type { Book, Highlight } from '@/src/db/types';
+import type { Book, Highlight, Tag } from '@/src/db/types';
 import * as Meta from '@/src/db/meta';
 import * as Books from '@/src/db/books';
 import * as Highlights from '@/src/db/highlights';
@@ -42,10 +42,14 @@ import {
   pullBooksSince,
   pushHighlights,
   pullHighlightsSince,
+  pushTags,
+  pullTagsSince,
   type RemoteBook,
   type RemoteHighlight,
+  type RemoteTag,
   type Tier,
 } from './firestore';
+import { emitSyncCompleted } from './events';
 import { uuidv4 } from './uuid';
 
 export type SyncResult = {
@@ -81,29 +85,42 @@ export async function runSync(db: DbExec, uid: string): Promise<SyncResult> {
   const since = await Meta.getLastSyncedAt(db);
 
   // ---- PUSH ----
+  // Tags push first so receivers that pull tags-then-highlights don't observe
+  // a window where a highlight references a tag name we haven't shipped the
+  // standalone tag row for yet. Tag rows are cheap (name + timestamps).
+  const dirtyTags = await Tags.listTagsDirtySince(db, since);
   const dirtyBooks = await Books.listBooksDirtySince(db, since);
   const dirtyHighlights = await Highlights.listHighlightsDirtySince(db, since);
 
-  // Backfill remote_id for any pre-v2 rows that were created before this
+  // Backfill remote_id for any pre-sync rows that were created before this
   // feature shipped. Without this, rows with NULL remote_id would silently
   // skip the push.
   const booksToPush = await Promise.all(dirtyBooks.map((b) => ensureRemoteId(db, 'books', b)));
   const highlightsToPush = await Promise.all(
     dirtyHighlights.map((h) => ensureRemoteId(db, 'highlights', h))
   );
+  const tagsToPush = await Promise.all(dirtyTags.map((t) => ensureTagRemoteId(db, t)));
 
+  const remoteTags: RemoteTag[] = tagsToPush.map((t) => toRemoteTag(t, tier));
   const remoteBooks: RemoteBook[] = booksToPush.map((b) => toRemoteBook(b, tier));
   const remoteHighlights: RemoteHighlight[] = await Promise.all(
     highlightsToPush.map((h) => toRemoteHighlight(db, h, tier))
   );
 
+  await pushTags(uid, remoteTags);
   await pushBooks(uid, remoteBooks);
   await pushHighlights(uid, remoteHighlights);
 
   // ---- PULL ----
+  // Pull tags before highlights so applyRemoteHighlight's tag reconciliation
+  // sees the freshest tag names — including tombstones we want to suppress.
+  const pulledTags = await pullTagsSince(uid, since);
   const pulledBooks = await pullBooksSince(uid, since);
   const pulledHighlights = await pullHighlightsSince(uid, since);
 
+  for (const rt of pulledTags) {
+    await applyRemoteTag(db, rt);
+  }
   for (const rb of pulledBooks) {
     await applyRemoteBook(db, rb);
   }
@@ -113,9 +130,14 @@ export async function runSync(db: DbExec, uid: string): Promise<SyncResult> {
 
   await Meta.setLastSyncedAt(db, startedAt);
 
+  // Notify any subscribers (e.g. the Library screen that mounted while we
+  // were still pulling) so they re-read from SQLite and the user's data
+  // shows up without requiring a manual refresh.
+  emitSyncCompleted();
+
   return {
-    pushed: remoteBooks.length + remoteHighlights.length,
-    pulled: pulledBooks.length + pulledHighlights.length,
+    pushed: remoteBooks.length + remoteHighlights.length + remoteTags.length,
+    pulled: pulledBooks.length + pulledHighlights.length + pulledTags.length,
     finishedAt: startedAt,
   };
 }
@@ -131,6 +153,29 @@ async function ensureRemoteId<T extends Book | Highlight>(
   const id = uuidv4();
   await db.runAsync(`UPDATE ${table} SET remote_id = ? WHERE id = ?`, [id, row.id]);
   return { ...row, remote_id: id };
+}
+
+// Tags use their lowercased name as remote_id rather than a uuid, so this
+// helper backfills the column for any rows that predate the v4 migration
+// (or somehow slipped in without a remote_id).
+async function ensureTagRemoteId(
+  db: DbExec,
+  row: Tag
+): Promise<Tag & { remote_id: string }> {
+  if (row.remote_id) return row as Tag & { remote_id: string };
+  await db.runAsync('UPDATE tags SET remote_id = name WHERE id = ?', [row.id]);
+  return { ...row, remote_id: row.name };
+}
+
+function toRemoteTag(t: Tag & { remote_id: string }, tier: Tier): RemoteTag {
+  return {
+    remote_id: t.remote_id,
+    name: t.name,
+    created_at: t.created_at,
+    updated_at: t.updated_at,
+    deleted_at: t.deleted_at,
+    tier,
+  };
 }
 
 function toRemoteBook(b: Book & { remote_id: string }, tier: Tier): RemoteBook {
@@ -173,6 +218,33 @@ async function toRemoteHighlight(
     deleted_at: h.deleted_at,
     tier,
   };
+}
+
+async function applyRemoteTag(db: DbExec, rt: RemoteTag): Promise<void> {
+  // Tag identity is the name, so we look up by name (not remote_id) — that
+  // also catches local rows created by setHighlightTags before the standalone
+  // tag arrived, and dedupes them under the same canonical row.
+  const existing = await db.getFirstAsync<{ id: number; updated_at: number }>(
+    'SELECT id, updated_at FROM tags WHERE name = ?',
+    [rt.name]
+  );
+  if (!existing) {
+    await db.runAsync(
+      'INSERT INTO tags (name, remote_id, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?)',
+      [rt.name, rt.remote_id, rt.created_at, rt.updated_at, rt.deleted_at]
+    );
+    return;
+  }
+  if (rt.updated_at < existing.updated_at) return; // local newer — keep
+  // If the remote is a tombstone, drop the join rows so the tag disappears
+  // from every highlight on this device immediately.
+  if (rt.deleted_at != null) {
+    await db.runAsync('DELETE FROM highlight_tags WHERE tag_id = ?', [existing.id]);
+  }
+  await db.runAsync(
+    'UPDATE tags SET remote_id = ?, updated_at = ?, deleted_at = ? WHERE id = ?',
+    [rt.remote_id, rt.updated_at, rt.deleted_at, existing.id]
+  );
 }
 
 async function applyRemoteBook(db: DbExec, rb: RemoteBook): Promise<void> {

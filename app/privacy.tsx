@@ -1,4 +1,4 @@
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '@/src/theme/ThemeContext';
 
@@ -10,15 +10,19 @@ import { useTheme } from '@/src/theme/ThemeContext';
 type Section = { icon: IconName; heading: string; body: string };
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const CONTACT_EMAIL = 'contact@harryh.tech';
 const LAST_UPDATED = 'May 2026';
+
+// Note: when signed in, highlight content (book titles, authors, the highlight
+// text itself, your notes, and tag names) is uploaded to our Firestore
+// backend so it can sync across your devices. Keep the sections below in
+// sync with what runSync actually writes to Firestore.
 
 const PRIVACY: Section[] = [
   {
     icon: 'phone-portrait-outline',
-    heading: 'Data stored on your device',
+    heading: 'Where your highlights live',
     body:
-      'Your books, highlights, notes, and tags are saved in a local SQLite database on your device. You can export this data as Markdown at any time from Settings, and remove it entirely by uninstalling the app or clearing its storage.',
+      'Your books, highlights, notes, and tags are kept in a local SQLite database on your device for fast, offline access. When you are signed in, the same data is also uploaded to our Firebase Firestore backend so it syncs to your other devices. You can export everything as Markdown at any time from Settings, wipe the local copy via Settings → Clear local data, or remove the synced copy by signing out (which also clears local data on this device).',
   },
   {
     icon: 'camera-outline',
@@ -34,15 +38,15 @@ const PRIVACY: Section[] = [
   },
   {
     icon: 'sync-outline',
-    heading: 'Optional cloud sync (Pro)',
+    heading: 'Cloud sync (Firebase Firestore)',
     body:
-      'If you sign in with Google and subscribe to Pro, your highlights, books, notes, and tags are synced to a private Firestore document scoped to your account UID. Firestore security rules enforce that only your signed-in account can read or write that document. Sync is off until you sign in, and can be stopped at any time by signing out.',
+      'When you are signed in with Google, your books, highlights, notes, and tags are continuously synced to a private Firestore collection scoped to your Google account ID (users/{your-uid}/...). Firestore security rules enforce that only your signed-in account can read or write that data. Sync happens automatically after every change and only while signed in — sign out and the device stops syncing and clears its local copy.',
   },
   {
     icon: 'person-circle-outline',
     heading: 'Sign-in data',
     body:
-      'Google Sign-In shares your Google account ID, email address, display name, and profile photo URL with the app. We use these only to identify you across devices and to display your profile on the Account screen. We do not contact you outside of essential account or billing notifications.',
+      'Google Sign-In shares your Google account ID, email address, display name, and profile photo URL with the app. We use these only to identify you across devices, to scope your synced data to your account, and to display your profile in Settings. We do not contact you outside of essential account or billing notifications.',
   },
   {
     icon: 'card-outline',
@@ -54,7 +58,7 @@ const PRIVACY: Section[] = [
     icon: 'bar-chart-outline',
     heading: 'No analytics or tracking',
     body:
-      'We do not use third-party analytics, advertising SDKs, behavioural tracking, fingerprinting, or any cross-app identifiers. The only network calls this app makes are: (1) extraction requests to the Anthropic API, (2) authentication via Google Sign-In, (3) sync to Firestore when signed in, and (4) subscription verification via Google Play.',
+      'We do not use third-party analytics, advertising SDKs, behavioral tracking, fingerprinting, or any cross-app identifiers. The only network calls this app makes are: (1) extraction requests to the Anthropic API, (2) authentication via Google Sign-In, (3) sync to Firestore when signed in, and (4) subscription verification via Google Play.',
   },
   {
     icon: 'shield-checkmark-outline',
@@ -66,13 +70,13 @@ const PRIVACY: Section[] = [
     icon: 'trash-outline',
     heading: 'Your data & deletion',
     body:
-      'You can export everything as Markdown from Settings → Export. You can delete synced data by signing in and choosing "Delete cloud data" on the Account screen, or by emailing us. Local data is removed by uninstalling the app. If you would like a complete copy of your data or its full deletion, email us using the address below.',
+      'You can export everything as Markdown from Settings → Export. Signing out from Settings stops sync on this device and wipes its local copy. Uninstalling the app removes all local data on the device.',
   },
   {
     icon: 'people-outline',
     heading: 'Children',
     body:
-      'This app is not directed at children under 13 and we do not knowingly collect data from them. If you believe a child has signed in, contact us and we\'ll remove the account.',
+      'This app is not directed at children under 13 and we do not knowingly collect data from them.',
   },
 ];
 
@@ -87,7 +91,7 @@ const TERMS: Section[] = [
     icon: 'star-outline',
     heading: 'Subscriptions',
     body:
-      'Pro is billed through Google Play at the price shown on the paywall. Subscriptions auto-renew until cancelled. You can cancel any time from Google Play → Subscriptions; cancellation takes effect at the end of the current billing period. Free-tier extractions are limited per device.',
+      'Pro is billed through Google Play at the price shown on the paywall. Subscriptions auto-renew until canceled. You can cancel any time from Google Play → Subscriptions; cancellation takes effect at the end of the current billing period. Free-tier extractions are limited per device.',
   },
   {
     icon: 'create-outline',
@@ -177,68 +181,16 @@ export default function Privacy() {
               marginTop: 4,
             }}
           >
-            We built Highlight Capture to be lightweight and private. Your reading
-            stays on your device unless you opt into cloud sync. Here&apos;s exactly
-            what that means.
+            We built Highlight Capture to be lightweight and private. Your
+            highlights live on your device for offline access and, while you
+            are signed in, also sync to your private Firebase account so they
+            follow you across devices. Here&apos;s exactly what that means.
           </Text>
         </View>
       </View>
 
       <SectionGroup title="Privacy" sections={PRIVACY} />
       <SectionGroup title="Terms" sections={TERMS} />
-
-      {/* Contact card */}
-      <Pressable
-        onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)}
-        style={({ pressed }) => ({
-          backgroundColor: colors.surface,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: colors.border,
-          padding: 18,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 14,
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            backgroundColor: colors.primary + '18',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="mail" size={20} color={colors.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: '600',
-              color: colors.textSubtle,
-              letterSpacing: 0.4,
-              textTransform: 'uppercase',
-            }}
-          >
-            Questions or data requests
-          </Text>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: colors.text,
-              marginTop: 3,
-            }}
-          >
-            {CONTACT_EMAIL}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.textSubtle} />
-      </Pressable>
     </ScrollView>
   );
 }

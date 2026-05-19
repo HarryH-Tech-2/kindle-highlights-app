@@ -27,7 +27,7 @@ const STEPS: Step[] = [
   },
   {
     emoji: '🗂️',
-    title: 'Organise and export',
+    title: 'Organize and export',
     body:
       'Every highlight is saved against the book it came from. Add tags, write a note, and export your collection to plain text whenever you want.',
   },
@@ -40,12 +40,12 @@ export default function Onboarding() {
   const step = STEPS[index];
   const isLast = index === STEPS.length - 1;
 
-  // After onboarding we always go through /account — the root layout's auth
+  // After onboarding we always go through /login — the root layout's auth
   // gate handles forwarding signed-in users on to the library.
   const finish = async () => {
     const db = await getDb();
     await markOnboardingSeen(db);
-    router.replace('/account');
+    router.replace('/login');
   };
 
   return (

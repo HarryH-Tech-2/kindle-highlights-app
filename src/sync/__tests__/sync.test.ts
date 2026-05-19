@@ -65,13 +65,19 @@ describe('runSync — push', () => {
     const book = await Books.createBook(db, { title: 'A' });
     await Highlights.createHighlight(db, { book_id: book.id, text: 'hi', tag_names: ['focus'] });
     const result = await runSync(db, 'u1');
-    expect(result.pushed).toBe(2);
+    // book + highlight + the tag itself (tags are now first-class synced
+    // entities so standalone tags survive sign-out / reach other devices).
+    expect(result.pushed).toBe(3);
     const remoteBooks = fake.__collections.get('users/u1/books');
     const remoteHighlights = fake.__collections.get('users/u1/highlights');
+    const remoteTags = fake.__collections.get('users/u1/tags');
     expect(remoteBooks?.size).toBe(1);
     expect(remoteHighlights?.size).toBe(1);
+    expect(remoteTags?.size).toBe(1);
     const hl = Array.from(remoteHighlights!.values())[0] as { tag_names: string[] };
     expect(hl.tag_names).toEqual(['focus']);
+    const tag = Array.from(remoteTags!.values())[0] as { name: string };
+    expect(tag.name).toBe('focus');
   });
 
   test('pushes tombstones for soft-deleted rows', async () => {

@@ -5,7 +5,17 @@ import {
   renderBookExport,
   renderTagExport
 } from '../../src/export/markdown';
-import type { Book, HighlightWithRelations } from '../../src/db/types';
+import type { Book, HighlightWithRelations, Tag } from '../../src/db/types';
+
+const mkTag = (over: Partial<Tag> = {}): Tag => ({
+  id: 1,
+  name: 'habits',
+  remote_id: 'habits',
+  created_at: 0,
+  updated_at: 0,
+  deleted_at: null,
+  ...over,
+});
 
 const mkBook = (over: Partial<Book> = {}): Book => ({
   id: 1,
@@ -44,7 +54,9 @@ describe('renderHighlight', () => {
 
   test('includes tags line when tags present', () => {
     const out = renderHighlight(
-      mkHighlight({ tags: [{ id: 1, name: 'habits' }, { id: 2, name: 'systems' }] })
+      mkHighlight({
+        tags: [mkTag({ id: 1, name: 'habits' }), mkTag({ id: 2, name: 'systems' })],
+      })
     );
     expect(out).toContain('— Tags: #habits #systems');
   });
@@ -101,8 +113,8 @@ describe('renderTagExport', () => {
     const b1 = mkBook({ id: 1, title: 'Alpha' });
     const b2 = mkBook({ id: 2, title: 'Bravo' });
     const out = renderTagExport('habits', [
-      mkHighlight({ id: 1, book: b1, text: 'x', tags: [{ id: 1, name: 'habits' }] }),
-      mkHighlight({ id: 2, book: b2, text: 'y', tags: [{ id: 1, name: 'habits' }] })
+      mkHighlight({ id: 1, book: b1, text: 'x', tags: [mkTag({ id: 1, name: 'habits' })] }),
+      mkHighlight({ id: 2, book: b2, text: 'y', tags: [mkTag({ id: 1, name: 'habits' })] })
     ]);
     expect(out).toMatch(/^# Tag: habits\n\n/);
     expect(out).toContain('## Alpha');

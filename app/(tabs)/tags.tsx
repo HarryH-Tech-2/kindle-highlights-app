@@ -8,6 +8,7 @@ import { useTagsWithCounts } from '@/src/hooks/useTags';
 import { EmptyState } from '@/src/components/EmptyState';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { accentFor } from '@/src/theme/colors';
+import { scheduleSync } from '@/src/sync/scheduler';
 
 export default function TagsList() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function TagsList() {
       setDraftName('');
       setCreating(false);
       await refresh();
+      scheduleSync();
     } catch (e: any) {
       Alert.alert('Could not create tag', e?.message ?? 'Unknown error');
     } finally {

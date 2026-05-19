@@ -32,7 +32,7 @@ const BENEFITS: Array<{
   {
     icon: 'color-palette',
     title: 'Styled highlights',
-    body: 'Colour and italicise saved highlights to make them yours.',
+    body: 'Color and italicize saved highlights to make them yours.',
   },
   {
     icon: 'document-text',
@@ -192,7 +192,7 @@ export default function Paywall() {
       </Pressable>
 
       <Text style={{ fontSize: 12, color: colors.textSubtle, textAlign: 'center', lineHeight: 18 }}>
-        Subscriptions auto-renew until cancelled. You can manage or cancel any time in the Google
+        Subscriptions auto-renew until canceled. You can manage or cancel any time in the Google
         Play Store.
       </Text>
     </ScrollView>
