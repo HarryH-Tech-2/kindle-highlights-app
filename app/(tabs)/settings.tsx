@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,16 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
 import * as Books from '@/src/db/books';
 import * as Highlights from '@/src/db/highlights';
+import * as Meta from '@/src/db/meta';
 import { wipeUserScopedData } from '@/src/db/meta';
 import { renderLibrary } from '@/src/export/markdown';
 import { shareMarkdown } from '@/src/export/share';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { type ThemeMode } from '@/src/theme/colors';
-import { signOut } from '@/src/auth/firebase';
+import { signOut, deleteCurrentUser } from '@/src/auth/firebase';
 import { useAuthUser } from '@/src/auth/session';
+import { runSync } from '@/src/sync/sync';
+import { deleteAllUserData } from '@/src/sync/firestore';
 
 const FEEDBACK_EMAIL = 'contact@harryh.tech';
 
@@ -28,7 +31,38 @@ export default function Settings() {
   const router = useRouter();
   const { colors, mode, setMode } = useTheme();
   const { user } = useAuthUser();
-  const [busy, setBusy] = useState<null | 'export' | 'clear' | 'signout'>(null);
+  const [busy, setBusy] = useState<null | 'export' | 'clear' | 'signout' | 'sync' | 'delete'>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setLastSyncedAt(null);
+      return;
+    }
+    (async () => {
+      try {
+        const db = await getDb();
+        setLastSyncedAt((await Meta.getLastSyncedAt(db)) || null);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [user]);
+
+  const handleSync = async () => {
+    if (busy || !user) return;
+    setBusy('sync');
+    try {
+      const db = await getDb();
+      const result = await runSync(db, user.uid);
+      setLastSyncedAt((await Meta.getLastSyncedAt(db)) || null);
+      Alert.alert('Sync complete', `Pushed ${result.pushed} • Pulled ${result.pulled}`);
+    } catch (e: any) {
+      Alert.alert('Sync failed', e?.message ?? 'Unknown error');
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const exportAll = async () => {
     if (busy) return;
@@ -109,6 +143,64 @@ export default function Settings() {
     ]);
   };
 
+  // Two-step destructive flow required by Play's account-deletion policy.
+  // Order matters: Firestore docs first (we need the user's auth token to
+  // satisfy security rules), then the Auth user, then local SQLite. If the
+  // auth credential has aged out, Firebase throws auth/requires-recent-login
+  // — we surface that with a clear "sign out and back in" message because
+  // re-prompting for Google credentials mid-flow would be jarring.
+  const handleDeleteAccount = () => {
+    if (!user) return;
+    Alert.alert(
+      'Delete your account?',
+      'This permanently removes your books, highlights, tags, and notes from the cloud and from this device, and deletes your sign-in record. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation so a single fat-fingered tap doesn't nuke
+            // someone's library.
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Your highlights, books, tags, and account will be deleted. There is no undo.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Yes, delete everything',
+                  style: 'destructive',
+                  onPress: async () => {
+                    setBusy('delete');
+                    try {
+                      await deleteAllUserData(user.uid);
+                      await deleteCurrentUser();
+                      const db = await getDb();
+                      await wipeUserScopedData(db);
+                      // No success Alert — the /login redirect (driven by
+                      // _layout's auth listener) is its own confirmation.
+                    } catch (e: any) {
+                      if (e?.code === 'auth/requires-recent-login') {
+                        Alert.alert(
+                          'Please sign in again',
+                          'For your security, account deletion needs a fresh sign-in. Sign out, sign back in, then try again.'
+                        );
+                      } else {
+                        Alert.alert('Delete failed', e?.message ?? 'Unknown error');
+                      }
+                    } finally {
+                      setBusy(null);
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const handleFeedback = async () => {
     const url = `mailto:${FEEDBACK_EMAIL}?subject=Kindle%20Highlights%20feedback`;
     const supported = await Linking.canOpenURL(url);
@@ -121,11 +213,10 @@ export default function Settings() {
       style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{ padding: 20, gap: 28, paddingBottom: 60 }}
     >
-      {/* Profile chip */}
+      {/* Profile card */}
       {user && (
-        <Pressable
-          onPress={() => router.push('/account' as never)}
-          style={({ pressed }) => ({
+        <View
+          style={{
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: colors.surface,
@@ -134,8 +225,7 @@ export default function Settings() {
             borderWidth: 1,
             borderColor: colors.border,
             gap: 14,
-            opacity: pressed ? 0.85 : 1,
-          })}
+          }}
         >
           <View
             style={{
@@ -153,14 +243,15 @@ export default function Settings() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.text, fontWeight: '600', fontSize: 16 }}>
-              {user.displayName ?? 'Account'}
+              {user.displayName ?? 'Signed in'}
             </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
-              {user.email ?? 'Manage account & sync'}
-            </Text>
+            {user.email ? (
+              <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
+                {user.email}
+              </Text>
+            ) : null}
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textSubtle} />
-        </Pressable>
+        </View>
       )}
 
       {/* Appearance */}
@@ -219,6 +310,19 @@ export default function Settings() {
 
       {/* Data */}
       <Section title="Your library">
+        {user && (
+          <Row
+            icon="sync"
+            label="Sync now"
+            hint={
+              lastSyncedAt
+                ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
+                : 'Push and pull changes from your account'
+            }
+            onPress={handleSync}
+            busy={busy === 'sync'}
+          />
+        )}
         <Row
           icon="download-outline"
           label="Export all highlights"
@@ -283,6 +387,31 @@ export default function Settings() {
           ) : (
             <Text style={{ color: colors.danger, fontSize: 15, fontWeight: '600' }}>
               Sign out
+            </Text>
+          )}
+        </Pressable>
+      )}
+
+      {/* Delete account — kept visually distinct from sign-out (filled
+          danger background vs outline) so the irreversible action reads
+          as more serious than the reversible one. */}
+      {user && (
+        <Pressable
+          onPress={handleDeleteAccount}
+          disabled={busy !== null}
+          style={({ pressed }) => ({
+            borderRadius: 14,
+            paddingVertical: 14,
+            backgroundColor: colors.danger,
+            alignItems: 'center',
+            opacity: busy === 'delete' ? 0.6 : pressed ? 0.85 : 1,
+          })}
+        >
+          {busy === 'delete' ? (
+            <ActivityIndicator color={colors.primaryText} />
+          ) : (
+            <Text style={{ color: colors.primaryText, fontSize: 15, fontWeight: '600' }}>
+              Delete account
             </Text>
           )}
         </Pressable>

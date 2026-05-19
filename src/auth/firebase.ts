@@ -9,7 +9,7 @@
 //   2. signInWithGoogle() opens the system Google account picker, exchanges
 //      the resulting ID token for a Firebase credential, and signs the user
 //      in to Firebase Auth. Returns the firebase.auth.User on success or
-//      null if the user cancelled.
+//      null if the user canceled.
 //   3. signOut() clears both the Google session and the Firebase session.
 
 // Replace this in Firebase Console (Authentication → Sign-in method → Google
@@ -102,7 +102,7 @@ function toAuthUser(u: FirebaseUser | null): AuthUser | null {
   return { uid: u.uid, email: u.email, displayName: u.displayName };
 }
 
-// Returns null if the user cancelled the picker; throws on real errors.
+// Returns null if the user canceled the picker; throws on real errors.
 export async function signInWithGoogle(): Promise<AuthUser | null> {
   configureGoogleSignIn();
   const g = loadGoogle();
@@ -154,4 +154,17 @@ export function getCurrentUser(): AuthUser | null {
 export function onAuthStateChanged(cb: (user: AuthUser | null) => void): () => void {
   const auth = loadAuth();
   return auth.onAuthStateChanged((u) => cb(toAuthUser(u as FirebaseUser | null)));
+}
+
+// Permanently deletes the currently signed-in Firebase Auth user record.
+// Caller is responsible for clearing any user-scoped data (Firestore +
+// local SQLite) before invoking this; once the auth user is gone we can
+// no longer write under that uid. Firebase will throw a code of
+// 'auth/requires-recent-login' if the credential has aged out — the
+// caller should surface that and prompt the user to re-sign-in.
+export async function deleteCurrentUser(): Promise<void> {
+  const auth = loadAuth();
+  const u = auth.currentUser as { delete: () => Promise<void> } | null;
+  if (!u) throw new Error('No signed-in user to delete.');
+  await u.delete();
 }

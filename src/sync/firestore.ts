@@ -5,9 +5,13 @@
 // Document shape choices:
 //   - `remote_id` is the document ID — Firestore's path is the source of truth
 //     for identity, so we never need server-side dedupe.
-//   - Tags are denormalized as a flat `tag_names: string[]` on each highlight.
-//     We don't sync the tags table itself; on pull we rebuild local tag rows
-//     from these names. Last writer's tag list wins per highlight.
+//   - Tags sync two ways. (1) Each highlight carries a `tag_names: string[]`
+//     so the highlight's tag list is self-contained — last writer wins per
+//     highlight. (2) Tags themselves also sync as their own collection so
+//     standalone tags (created on the Tags tab without being attached to
+//     anything) survive sign-out and reach other devices. Tag identity is
+//     the lowercased name, used both as the local UNIQUE key and the
+//     Firestore doc id, so concurrent creators converge on one document.
 //   - `deleted_at` is a tombstone, not a hard delete. Firestore docs are kept
 //     so other devices can observe the deletion via their `updated_at > since`
 //     query the next time they sync.
@@ -37,6 +41,15 @@ export type RemoteHighlight = {
   // Raw JSON blob mirroring the local `style` column. Optional on the wire
   // so older clients that wrote docs without the field still deserialize.
   style: string | null;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
+  tier: Tier;
+};
+
+export type RemoteTag = {
+  remote_id: string;
+  name: string;
   created_at: number;
   updated_at: number;
   deleted_at: number | null;
@@ -76,7 +89,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 async function pushDocs<T extends { remote_id: string }>(
   uid: string,
-  collection: 'books' | 'highlights',
+  collection: 'books' | 'highlights' | 'tags',
   docs: T[]
 ): Promise<void> {
   if (docs.length === 0) return;
@@ -93,7 +106,7 @@ async function pushDocs<T extends { remote_id: string }>(
 
 async function pullDocs<T>(
   uid: string,
-  collection: 'books' | 'highlights',
+  collection: 'books' | 'highlights' | 'tags',
   since: number
 ): Promise<T[]> {
   const fs = loadFirestore();
@@ -124,4 +137,31 @@ export async function pullHighlightsSince(
   since: number
 ): Promise<RemoteHighlight[]> {
   return pullDocs<RemoteHighlight>(uid, 'highlights', since);
+}
+
+export async function pushTags(uid: string, tags: RemoteTag[]): Promise<void> {
+  return pushDocs(uid, 'tags', tags);
+}
+
+export async function pullTagsSince(uid: string, since: number): Promise<RemoteTag[]> {
+  return pullDocs<RemoteTag>(uid, 'tags', since);
+}
+
+// Hard-deletes every document under users/{uid}/{books,highlights,tags}.
+// Used by the in-app "Delete account" flow — the user has explicitly asked
+// for their cloud copy to disappear, so we drop the docs rather than write
+// tombstones (which would defeat the point: tombstones still exist and
+// would resurrect on a re-sign-in). The Firebase Auth user is deleted
+// separately by the caller.
+export async function deleteAllUserData(uid: string): Promise<void> {
+  const fs = loadFirestore();
+  for (const collection of ['books', 'highlights', 'tags'] as const) {
+    const snap = await fs.collection(`users/${uid}/${collection}`).get();
+    const refs = snap.docs.map((d) => d.ref);
+    for (const part of chunk(refs, BATCH_LIMIT)) {
+      const batch = fs.batch();
+      for (const ref of part) batch.delete(ref);
+      await batch.commit();
+    }
+  }
 }
