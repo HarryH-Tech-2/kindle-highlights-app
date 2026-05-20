@@ -7,6 +7,11 @@
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
   <uses-permission android:name="com.android.vending.BILLING"/>
+  <!-- expo-media-library declares READ_MEDIA_AUDIO in its own manifest, which
+       surfaces a "Music and audio" prompt on Android 13+. We only ever save
+       images (beautified quote cards), so strip the audio + video perms at
+       manifest-merge time. -->
+  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>

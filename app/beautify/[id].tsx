@@ -3,9 +3,13 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,12 +21,15 @@ import * as Sharing from 'expo-sharing';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
 import * as Highlights from '@/src/db/highlights';
+import { isSubscribed } from '@/src/db/meta';
 import type { HighlightWithRelations } from '@/src/db/types';
 import { useTheme } from '@/src/theme/ThemeContext';
 import {
   ALL_BACKGROUNDS,
   type Background,
+  type PhotoBackground,
 } from '@/src/beautify/backgrounds';
+import { generateAIBackground, AIBackgroundError } from '@/src/beautify/aiGenerate';
 
 // Beautify screen.
 //
@@ -34,8 +41,6 @@ import {
 // so what you see is what gets shared (modulo pixel density, which
 // captureRef handles via the `result: 'tmpfile'` + native scale).
 
-const CARD_ASPECT = 1; // square — best for IG feed, decent everywhere else.
-
 export default function Beautify() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -45,6 +50,13 @@ export default function Beautify() {
   const [bg, setBg] = useState<Background>(ALL_BACKGROUNDS[0]);
   const [busy, setBusy] = useState<null | 'save' | 'share'>(null);
   const shotRef = useRef<ViewShot>(null);
+
+  // AI background generator state. `aiBackgrounds` is appended to the
+  // picker carousel; entries live only as long as the screen is mounted.
+  const [aiBackgrounds, setAiBackgrounds] = useState<PhotoBackground[]>([]);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   const load = useCallback(async () => {
     const db = await getDb();
@@ -101,6 +113,46 @@ export default function Beautify() {
     }
   };
 
+  // Pressing the "Create with AI" tile in the picker. Pro-gated: free users
+  // get bounced to the paywall; subscribers see a prompt input modal.
+  const onOpenAi = async () => {
+    const subscribed = await isSubscribed(await getDb());
+    if (!subscribed) {
+      router.push('/paywall');
+      return;
+    }
+    setAiPrompt('');
+    setAiModalOpen(true);
+  };
+
+  const onGenerateAi = async () => {
+    if (aiGenerating) return;
+    setAiGenerating(true);
+    try {
+      const uri = await generateAIBackground(aiPrompt);
+      const newBg: PhotoBackground = {
+        kind: 'photo',
+        // Stable per-generation id so the picker keys stay unique.
+        id: `ai-${Date.now()}`,
+        source: { uri },
+        // Photos all use a dark scrim so light text always reads — same
+        // assumption applied to the bundled photo backgrounds.
+        textColor: 'light',
+      };
+      setAiBackgrounds((prev) => [newBg, ...prev]);
+      setBg(newBg);
+      setAiModalOpen(false);
+    } catch (e: unknown) {
+      const msg =
+        e instanceof AIBackgroundError
+          ? e.message
+          : (e as Error)?.message ?? 'Unknown error';
+      Alert.alert('Could not generate background', msg);
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   const onShare = async () => {
     if (busy) return;
     setBusy('share');
@@ -152,7 +204,9 @@ export default function Beautify() {
         contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* The card. We constrain it with aspectRatio so it stays square. */}
+        {/* The card. Height is content-driven: short quotes get a compact
+            card, long ones a taller one. Width is capped so it never gets
+            absurdly wide on tablets. */}
         <View style={{ alignItems: 'center' }}>
           <ViewShot
             ref={shotRef}
@@ -160,7 +214,7 @@ export default function Beautify() {
             style={{
               width: '100%',
               maxWidth: 480,
-              aspectRatio: CARD_ASPECT,
+              aspectRatio: 1,
               borderRadius: 24,
               overflow: 'hidden',
               backgroundColor: '#000',
@@ -194,7 +248,25 @@ export default function Beautify() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 10, paddingHorizontal: 4 }}
           >
-            {ALL_BACKGROUNDS.map((b) => {
+            {/* "Create with AI" — Pro-only entry point. Sits at the head of
+                the carousel so it's the first thing users see. */}
+            <Pressable
+              onPress={onOpenAi}
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 14,
+                overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: colors.primary,
+                backgroundColor: colors.primary + '15',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="sparkles" size={22} color={colors.primary} />
+            </Pressable>
+            {[...aiBackgrounds, ...ALL_BACKGROUNDS].map((b) => {
               const selected = b.id === bg.id;
               return (
                 <Pressable
@@ -288,6 +360,94 @@ export default function Beautify() {
           )}
         </Pressable>
       </View>
+
+      {/* AI prompt modal. Slides up, captures a short text prompt, and
+          calls the Gemini image-gen endpoint. Disabled UI while generating
+          so users can't fire concurrent requests. */}
+      <Modal
+        visible={aiModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => (aiGenerating ? null : setAiModalOpen(false))}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.bg,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              gap: 14,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="sparkles" size={20} color={colors.primary} />
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 }}>
+                Create background with AI
+              </Text>
+              <Pressable
+                onPress={() => (aiGenerating ? null : setAiModalOpen(false))}
+                hitSlop={12}
+                disabled={aiGenerating}
+                style={{ opacity: aiGenerating ? 0.4 : 1 }}
+              >
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </Pressable>
+            </View>
+            <Text style={{ fontSize: 14, color: colors.textMuted, lineHeight: 20 }}>
+              Describe a mood, scene, or palette. Keep it short — abstract prompts work best.
+            </Text>
+            <TextInput
+              value={aiPrompt}
+              onChangeText={setAiPrompt}
+              placeholder="e.g. misty mountain at dawn, warm pastel tones"
+              placeholderTextColor={colors.textSubtle}
+              multiline
+              numberOfLines={3}
+              editable={!aiGenerating}
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 12,
+                padding: 12,
+                color: colors.text,
+                fontSize: 15,
+                minHeight: 84,
+                textAlignVertical: 'top',
+                backgroundColor: colors.surface,
+              }}
+            />
+            <Pressable
+              onPress={onGenerateAi}
+              disabled={aiGenerating}
+              style={({ pressed }) => ({
+                backgroundColor: colors.primary,
+                paddingVertical: 14,
+                borderRadius: 12,
+                alignItems: 'center',
+                opacity: aiGenerating ? 0.6 : pressed ? 0.9 : 1,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 8,
+              })}
+            >
+              {aiGenerating ? (
+                <ActivityIndicator color={colors.primaryText} />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={18} color={colors.primaryText} />
+                  <Text style={{ color: colors.primaryText, fontWeight: '600', fontSize: 16 }}>
+                    Generate
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -328,7 +488,11 @@ function Card({
       };
 
   return (
-    <View style={{ flex: 1 }}>
+    // Fills the (square) ViewShot. Background layers absolute-fill the
+    // whole canvas; content is centered vertically so the card reads as a
+    // whole composition in share-sheet previews instead of a tall strip
+    // that gets center-cropped to a "zoomed in" thumbnail.
+    <View style={{ flex: 1, justifyContent: 'center' }}>
       {/* 1. background */}
       {bg.kind === 'gradient' ? (
         <LinearGradient
@@ -363,31 +527,14 @@ function Card({
       {/* 3. content */}
       <View
         style={{
-          flex: 1,
           paddingHorizontal: 22,
           paddingTop: 16,
           paddingBottom: 18,
         }}
       >
-        {/* Opening quotation mark — decorative anchor, sits flush with the
-            top padding so the quote that follows reads higher in the card. */}
+        {/* Quote — top-aligned. Font
+            size stays fixed; the card grows to accommodate the text. */}
         <Text
-          style={{
-            fontSize: 56,
-            lineHeight: 48,
-            color: fgSubtle,
-            fontWeight: '800',
-            marginBottom: 2,
-            ...textShadow,
-          }}
-        >
-          “
-        </Text>
-
-        {/* Quote — top-aligned, immediately under the opening mark. */}
-        <Text
-          adjustsFontSizeToFit
-          numberOfLines={fitLines(highlight.text)}
           style={{
             fontSize: 22,
             lineHeight: 30,
@@ -400,11 +547,10 @@ function Card({
           {highlight.text}
         </Text>
 
-        {/* Spacer pushes the attribution to the bottom. */}
-        <View style={{ flex: 1 }} />
-
-        {/* Attribution + wordmark */}
-        <View style={{ gap: 12 }}>
+        {/* Attribution + wordmark — sits a comfortable gap below the quote
+            rather than being flex-pushed to the bottom of a fixed-height
+            card. */}
+        <View style={{ gap: 12, marginTop: 24 }}>
           <View
             style={{
               height: 1,
@@ -414,7 +560,6 @@ function Card({
           <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
             <View style={{ flex: 1 }}>
               <Text
-                numberOfLines={1}
                 style={{
                   fontSize: 15,
                   fontWeight: '700',
@@ -454,16 +599,6 @@ function Card({
       </View>
     </View>
   );
-}
-
-// Rough max lines we want the quote to occupy before truncating, scaled by
-// text length. `adjustsFontSizeToFit` will shrink to fit within this.
-function fitLines(text: string): number {
-  const len = text.length;
-  if (len < 120) return 6;
-  if (len < 240) return 9;
-  if (len < 400) return 12;
-  return 14;
 }
 
 // Reused absolute-fill style.

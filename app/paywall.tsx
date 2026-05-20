@@ -35,6 +35,11 @@ const BENEFITS: Array<{
     body: 'Color and italicize saved highlights to make them yours.',
   },
   {
+    icon: 'sparkles',
+    title: 'AI-generated backgrounds',
+    body: 'Create custom shareable backgrounds for any highlight from a short prompt.',
+  },
+  {
     icon: 'document-text',
     title: 'Full library export',
     body: 'Export every highlight, book, or tag to clean Markdown.',

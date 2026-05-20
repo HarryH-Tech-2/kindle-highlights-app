@@ -8,6 +8,7 @@ import {
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -209,6 +210,7 @@ export default function Settings() {
   };
 
   return (
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{ padding: 20, gap: 28, paddingBottom: 60 }}
@@ -421,6 +423,7 @@ export default function Settings() {
         Highlight Capture v{Constants.expoConfig?.version ?? '0.0.0'}
       </Text>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

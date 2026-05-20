@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "1012430542584-o2guoi0qu9lclg6lh69q7nthcuufe6jv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.harry.highlightcapture",
+            "certificate_hash": "9f6fd825b03069826e23bc351a2c3197271d603b"
+          }
+        },
+        {
           "client_id": "1012430542584-mc53je2kk2oljag996vbq3lk4gsg85cp.apps.googleusercontent.com",
           "client_type": 3
         }

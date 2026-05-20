@@ -7,8 +7,17 @@ import * as Highlights from '@/src/db/highlights';
 import type { HighlightWithRelations } from '@/src/db/types';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { accentFor } from '@/src/theme/colors';
+import { accentFor, fonts } from '@/src/theme/colors';
 import { scheduleSync } from '@/src/sync/scheduler';
+
+function typographicQuotes(s: string): string {
+  return s
+    .replace(/(^|[\s(\[{<"])'/g, '$1\u2018')
+    .replace(/'/g, '\u2019')
+    .replace(/(^|[\s(\[{<'])"/g, '$1\u201C')
+    .replace(/"/g, '\u201D')
+    .replace(/--/g, '\u2014');
+}
 
 export default function HighlightDetail() {
   const router = useRouter();
@@ -41,10 +50,10 @@ export default function HighlightDetail() {
 
   const onShare = async () => {
     const attribution = hl.book.author
-      ? `\n\n— ${hl.book.title}, ${hl.book.author}`
-      : `\n\n— ${hl.book.title}`;
+      ? `\n\n\u2014 ${hl.book.title}, ${hl.book.author}`
+      : `\n\n\u2014 ${hl.book.title}`;
     try {
-      await Share.share({ message: `"${hl.text}"${attribution}` });
+      await Share.share({ message: `\u201C${hl.text}\u201D${attribution}` });
     } catch {
       // User dismissed the share sheet — nothing to do.
     }
@@ -57,46 +66,95 @@ export default function HighlightDetail() {
     month: 'long',
     day: 'numeric',
   });
+  const text = typographicQuotes(hl.text);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 16 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 18 }}
       >
-        {/* Hero card — the highlight text itself, in the user's chosen style.
-            A left accent stripe (matched to the book) ties it visually to its
-            source and adds the only color on the screen by default. */}
+        {/* Hero card — the highlight text itself. No border, soft elevation,
+            giant background quote glyph. Reads as a page from a notebook. */}
         <View
           style={{
-            flexDirection: 'row',
             backgroundColor: colors.surface,
-            borderRadius: 18,
-            borderWidth: 1,
-            borderColor: colors.border,
+            borderRadius: 20,
             overflow: 'hidden',
+            ...Platform.select({
+              ios: {
+                shadowColor: colors.shadow,
+                shadowOpacity: 0.08,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: 6 },
+              },
+              android: { elevation: 3 },
+            }),
           }}
         >
-          <View style={{ width: 5, backgroundColor: bookAccent }} />
-          <View style={{ flex: 1, padding: 20 }}>
-            <Ionicons
-              name="chatbox-ellipses"
-              size={18}
-              color={bookAccent}
-              style={{ marginBottom: 10, opacity: 0.7 }}
-            />
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', top: -60, left: -10 }}
+          >
+            <Text
+              style={{
+                fontSize: 280,
+                lineHeight: 280,
+                fontFamily: fonts.serif,
+                color: colors.quoteGlyph,
+              }}
+            >
+              “
+            </Text>
+          </View>
+          <View
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 28,
+              bottom: 28,
+              width: 3,
+              backgroundColor: bookAccent,
+              borderTopRightRadius: 3,
+              borderBottomRightRadius: 3,
+            }}
+          />
+          <View style={{ padding: 28, paddingLeft: 30 }}>
             <Text
               selectable
               style={{
-                fontSize: 20,
-                lineHeight: 30,
+                fontFamily: fonts.serif,
+                fontSize: 22,
+                lineHeight: 34,
                 color: highlightColor,
                 fontStyle: hl.styleParsed?.italic ? 'italic' : 'normal',
-                fontWeight: '500',
               }}
             >
-              {hl.text}
+              {text}
             </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 18,
+                gap: 8,
+              }}
+            >
+              <View style={{ width: 22, height: 1, backgroundColor: bookAccent }} />
+              <Text
+                style={{
+                  fontFamily: fonts.sans,
+                  fontSize: 12,
+                  color: colors.textMuted,
+                  fontWeight: '600',
+                  letterSpacing: 0.3,
+                }}
+                numberOfLines={1}
+              >
+                {hl.book.title}
+                {hl.book.author ? `, ${hl.book.author}` : ''}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -108,38 +166,61 @@ export default function HighlightDetail() {
             alignItems: 'center',
             backgroundColor: colors.surface,
             borderRadius: 14,
-            borderWidth: 1,
-            borderColor: colors.border,
             padding: 14,
             gap: 12,
-            opacity: pressed ? 0.85 : 1,
+            opacity: pressed ? 0.9 : 1,
+            ...Platform.select({
+              ios: {
+                shadowColor: colors.shadow,
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 2 },
+              },
+              android: { elevation: 1 },
+            }),
           })}
         >
           <View
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 10,
-              backgroundColor: bookAccent + '22',
-              alignItems: 'center',
-              justifyContent: 'center',
+              width: 32,
+              height: 44,
+              borderRadius: 3,
+              backgroundColor: bookAccent,
             }}
-          >
-            <Ionicons name="book" size={18} color={bookAccent} />
-          </View>
+          />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textSubtle, fontSize: 11, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>
+            <Text
+              style={{
+                fontFamily: fonts.sans,
+                color: colors.textSubtle,
+                fontSize: 10,
+                fontWeight: '700',
+                letterSpacing: 1.4,
+                textTransform: 'uppercase',
+              }}
+            >
               From
             </Text>
             <Text
-              style={{ color: colors.text, fontSize: 15, fontWeight: '600', marginTop: 1 }}
+              style={{
+                fontFamily: fonts.serif,
+                color: colors.text,
+                fontSize: 16,
+                fontWeight: '600',
+                marginTop: 2,
+              }}
               numberOfLines={1}
             >
               {hl.book.title}
             </Text>
             {hl.book.author && (
               <Text
-                style={{ color: colors.textMuted, fontSize: 13, marginTop: 1 }}
+                style={{
+                  fontFamily: fonts.sans,
+                  color: colors.textMuted,
+                  fontSize: 13,
+                  marginTop: 1,
+                }}
                 numberOfLines={1}
               >
                 {hl.book.author}
@@ -149,19 +230,35 @@ export default function HighlightDetail() {
           <Ionicons name="chevron-forward" size={18} color={colors.textSubtle} />
         </Pressable>
 
-        {/* Tags — each one is itself tappable into the tag detail page. */}
+        {/* Tags — tonal fills, no borders. */}
         {hl.tags.length > 0 && (
           <View
             style={{
               backgroundColor: colors.surface,
               borderRadius: 14,
-              borderWidth: 1,
-              borderColor: colors.border,
               padding: 14,
               gap: 10,
+              ...Platform.select({
+                ios: {
+                  shadowColor: colors.shadow,
+                  shadowOpacity: 0.05,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 2 },
+                },
+                android: { elevation: 1 },
+              }),
             }}
           >
-            <Text style={{ color: colors.textSubtle, fontSize: 11, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>
+            <Text
+              style={{
+                fontFamily: fonts.sans,
+                color: colors.textSubtle,
+                fontSize: 10,
+                fontWeight: '700',
+                letterSpacing: 1.4,
+                textTransform: 'uppercase',
+              }}
+            >
               Tags
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -172,17 +269,23 @@ export default function HighlightDetail() {
                     key={t.id}
                     onPress={() => router.push(`/tag/${encodeURIComponent(t.name)}`)}
                     style={({ pressed }) => ({
-                      paddingHorizontal: 10,
+                      paddingHorizontal: 11,
                       paddingVertical: 5,
                       borderRadius: 999,
                       backgroundColor: accent + '1f',
-                      borderWidth: 1,
-                      borderColor: accent + '55',
                       opacity: pressed ? 0.7 : 1,
                     })}
                   >
-                    <Text style={{ color: accent, fontSize: 13, fontWeight: '600' }}>
-                      #{t.name}
+                    <Text
+                      style={{
+                        fontFamily: fonts.sans,
+                        color: accent,
+                        fontSize: 13,
+                        fontWeight: '600',
+                        letterSpacing: 0.2,
+                      }}
+                    >
+                      {t.name}
                     </Text>
                   </Pressable>
                 );
@@ -197,79 +300,122 @@ export default function HighlightDetail() {
             style={{
               backgroundColor: colors.surface,
               borderRadius: 14,
-              borderWidth: 1,
-              borderColor: colors.border,
-              padding: 14,
+              padding: 16,
               gap: 8,
+              ...Platform.select({
+                ios: {
+                  shadowColor: colors.shadow,
+                  shadowOpacity: 0.05,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 2 },
+                },
+                android: { elevation: 1 },
+              }),
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="create" size={14} color={colors.textMuted} />
-              <Text style={{ color: colors.textSubtle, fontSize: 11, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>
+              <Ionicons name="create" size={13} color={colors.textMuted} />
+              <Text
+                style={{
+                  fontFamily: fonts.sans,
+                  color: colors.textSubtle,
+                  fontSize: 10,
+                  fontWeight: '700',
+                  letterSpacing: 1.4,
+                  textTransform: 'uppercase',
+                }}
+              >
                 Note
               </Text>
             </View>
             <Text
               selectable
-              style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}
+              style={{
+                fontFamily: fonts.serif,
+                color: colors.text,
+                fontSize: 16,
+                lineHeight: 24,
+              }}
             >
               {hl.note}
             </Text>
           </View>
         )}
 
-        {/* Saved meta — keep it subtle. */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4 }}>
-          <Ionicons name="time-outline" size={13} color={colors.textSubtle} />
-          <Text style={{ color: colors.textSubtle, fontSize: 12 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingHorizontal: 4,
+          }}
+        >
+          <Ionicons name="time-outline" size={12} color={colors.textSubtle} />
+          <Text
+            style={{
+              fontFamily: fonts.sans,
+              color: colors.textSubtle,
+              fontSize: 12,
+            }}
+          >
             Saved {savedLabel}
           </Text>
         </View>
       </ScrollView>
 
-      {/* Sticky action bar matching the review screen so the two feel like
-          two sides of the same flow. Edit is the primary action; share and
-          delete sit alongside as icon-only secondaries. */}
+      {/* Sticky action bar. Beautify is now the primary action — that's the
+          app's differentiator, so it deserves the front-and-center treatment.
+          Edit/share/delete sit alongside as icon-only secondaries. */}
       <View
         style={{
           paddingHorizontal: 20,
           paddingTop: 12,
           paddingBottom: Platform.OS === 'ios' ? 28 : 16,
           backgroundColor: colors.bg,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
           flexDirection: 'row',
           gap: 10,
         }}
       >
         <Pressable
-          onPress={() => router.push({ pathname: '/review', params: { id: String(hid) } })}
+          onPress={() => router.push(`/beautify/${hid}`)}
           style={({ pressed }) => ({
             flex: 1,
             paddingVertical: 14,
-            borderRadius: 12,
+            borderRadius: 999,
             backgroundColor: colors.primary,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            opacity: pressed ? 0.9 : 1,
-            elevation: 3,
-            shadowColor: colors.primary,
-            shadowOpacity: 0.3,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: 4 },
+            opacity: pressed ? 0.92 : 1,
+            ...Platform.select({
+              ios: {
+                shadowColor: colors.primary,
+                shadowOpacity: 0.28,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 5 },
+              },
+              android: { elevation: 4 },
+            }),
           })}
         >
-          <Ionicons name="pencil" size={18} color={colors.primaryText} />
-          <Text style={{ color: colors.primaryText, fontWeight: '600', fontSize: 16 }}>
-            Edit
+          <Ionicons name="sparkles" size={17} color={colors.primaryText} />
+          <Text
+            style={{
+              fontFamily: fonts.sans,
+              color: colors.primaryText,
+              fontWeight: '700',
+              fontSize: 15,
+              letterSpacing: 0.3,
+            }}
+          >
+            Beautify
           </Text>
         </Pressable>
         <IconButton
-          icon="sparkles"
-          color={colors.primary}
-          onPress={() => router.push(`/beautify/${hid}`)}
+          icon="pencil"
+          color={colors.text}
+          onPress={() => router.push({ pathname: '/review', params: { id: String(hid) } })}
           colors={colors}
         />
         <IconButton
@@ -306,16 +452,23 @@ function IconButton({
       style={({ pressed }) => ({
         width: 48,
         height: 48,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderRadius: 999,
         backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed ? 0.7 : 1,
+        ...Platform.select({
+          ios: {
+            shadowColor: colors.shadow,
+            shadowOpacity: 0.06,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+          },
+          android: { elevation: 1 },
+        }),
       })}
     >
-      <Ionicons name={icon} size={20} color={color} />
+      <Ionicons name={icon} size={19} color={color} />
     </Pressable>
   );
 }

@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { fonts } from '@/src/theme/colors';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -11,39 +12,64 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textSubtle,
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          borderTopWidth: 0,
+          // The capture pill on the home screen floats above the tab bar, so
+          // we add a touch of vertical padding here for breathing room.
           paddingBottom: 8,
-          paddingTop: 6,
-          height: 64,
+          paddingTop: 8,
+          height: 68,
+          // Soft elevation in lieu of a hard border line.
+          shadowColor: colors.shadow,
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: -2 },
+          elevation: 8,
         },
-        headerStyle: { backgroundColor: colors.surface },
+        tabBarLabelStyle: {
+          fontFamily: fonts.sans,
+          fontSize: 11,
+          fontWeight: '600',
+          letterSpacing: 0.4,
+        },
+        headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.text,
-        headerTitleStyle: { color: colors.text, fontWeight: '600' },
+        headerTitleStyle: {
+          color: colors.text,
+          fontFamily: fonts.serif,
+          fontSize: 18,
+          fontWeight: '600',
+        },
         headerShadowVisible: false,
-        sceneStyle: { backgroundColor: colors.bg },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Highlights',
-          // Library has its own giant greeting header — no need to repeat in chrome.
+          title: 'Library',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="sparkles" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="book-outline" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="tags"
         options={{
           title: 'Tags',
-          tabBarIcon: ({ color, size }) => <Ionicons name="pricetag" color={color} size={size} />,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="pricetag-outline" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings" color={color} size={size} />,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" color={color} size={size} />
+          ),
         }}
       />
     </Tabs>

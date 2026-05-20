@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, TextInput, Pressable } from 'react-native';
+import { View, Text, FlatList, TextInput, Pressable, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
@@ -10,7 +10,9 @@ import { renderBookExport } from '@/src/export/markdown';
 import { shareMarkdown } from '@/src/export/share';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { HighlightCard } from '@/src/components/HighlightCard';
+import { EmptyState } from '@/src/components/EmptyState';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { accentFor, fonts } from '@/src/theme/colors';
 import { scheduleSync } from '@/src/sync/scheduler';
 
 export default function BookDetail() {
@@ -66,20 +68,26 @@ export default function BookDetail() {
     await shareMarkdown(book.title, md);
   };
 
+  const accent = accentFor(book.title, colors.accentPalette);
+
   const inputStyle = {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 10,
+    borderRadius: 10,
+    padding: 12,
     color: colors.text,
     backgroundColor: colors.surface,
+    fontFamily: fonts.sans as string,
+    fontSize: 15,
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ padding: 16, borderBottomWidth: 1, borderColor: colors.border }}>
+      {/* Header — large serif title, an accent "spine" alongside for visual
+          tie-in with the home shelf, no hard divider below. */}
+      <View style={{ padding: 20, paddingBottom: 16 }}>
         {editing ? (
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: 10 }}>
             <TextInput
               value={title}
               onChangeText={setTitle}
@@ -94,15 +102,45 @@ export default function BookDetail() {
               placeholderTextColor={colors.textSubtle}
               style={inputStyle}
             />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
               <Pressable
                 onPress={onSaveEdit}
-                style={{ padding: 10, backgroundColor: colors.primary, borderRadius: 8 }}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  backgroundColor: colors.primary,
+                  borderRadius: 999,
+                  opacity: pressed ? 0.9 : 1,
+                })}
               >
-                <Text style={{ color: colors.primaryText, fontWeight: '600' }}>Save</Text>
+                <Text
+                  style={{
+                    fontFamily: fonts.sans,
+                    color: colors.primaryText,
+                    fontWeight: '700',
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  Save
+                </Text>
               </Pressable>
-              <Pressable onPress={() => setEditing(false)} style={{ padding: 10 }}>
-                <Text style={{ color: colors.textMuted }}>Cancel</Text>
+              <Pressable
+                onPress={() => setEditing(false)}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Text
+                  style={{
+                    fontFamily: fonts.sans,
+                    color: colors.textMuted,
+                    fontWeight: '600',
+                  }}
+                >
+                  Cancel
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -112,51 +150,108 @@ export default function BookDetail() {
             style={({ pressed }) => ({
               flexDirection: 'row',
               alignItems: 'flex-start',
-              gap: 10,
-              opacity: pressed ? 0.6 : 1,
+              gap: 14,
+              opacity: pressed ? 0.7 : 1,
             })}
           >
+            {/* Accent "spine" alongside the title — same color as the shelf */}
+            <View
+              style={{
+                width: 4,
+                alignSelf: 'stretch',
+                minHeight: 56,
+                backgroundColor: accent,
+                borderRadius: 2,
+                marginTop: 4,
+              }}
+            />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 22, fontWeight: '600', color: colors.text }}>
+              <Text
+                style={{
+                  fontFamily: fonts.sans,
+                  fontSize: 10,
+                  fontWeight: '700',
+                  letterSpacing: 1.4,
+                  textTransform: 'uppercase',
+                  color: colors.textSubtle,
+                }}
+              >
+                {highlights.length} highlight{highlights.length === 1 ? '' : 's'}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: fonts.serif,
+                  fontSize: 26,
+                  lineHeight: 32,
+                  color: colors.text,
+                  marginTop: 4,
+                  letterSpacing: -0.3,
+                }}
+              >
                 {book.title}
               </Text>
               {book.author && (
-                <Text style={{ color: colors.textMuted, marginTop: 2 }}>{book.author}</Text>
+                <Text
+                  style={{
+                    fontFamily: fonts.sans,
+                    color: colors.textMuted,
+                    fontSize: 14,
+                    marginTop: 4,
+                  }}
+                >
+                  {book.author}
+                </Text>
               )}
             </View>
-            <View
-              style={{
-                padding: 6,
-                borderRadius: 8,
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <Ionicons name="pencil" size={16} color={colors.textMuted} />
-            </View>
+            <Ionicons name="pencil" size={16} color={colors.textSubtle} />
           </Pressable>
         )}
-        <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
-          <Pressable onPress={onExport}>
-            <Text style={{ color: colors.primary, fontWeight: '500' }}>Export Markdown</Text>
+        <View style={{ flexDirection: 'row', gap: 18, marginTop: 14, marginLeft: 18 }}>
+          <Pressable onPress={onExport} hitSlop={6}>
+            <Text
+              style={{
+                fontFamily: fonts.sans,
+                color: colors.primary,
+                fontWeight: '600',
+                fontSize: 13,
+                letterSpacing: 0.3,
+              }}
+            >
+              Export Markdown
+            </Text>
           </Pressable>
-          <Pressable onPress={onDelete}>
-            <Text style={{ color: colors.danger, fontWeight: '500' }}>Delete book</Text>
+          <Pressable onPress={onDelete} hitSlop={6}>
+            <Text
+              style={{
+                fontFamily: fonts.sans,
+                color: colors.danger,
+                fontWeight: '600',
+                fontSize: 13,
+                letterSpacing: 0.3,
+              }}
+            >
+              Delete book
+            </Text>
           </Pressable>
         </View>
       </View>
+
       <FlatList
         data={highlights}
         keyExtractor={(h) => String(h.id)}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
         renderItem={({ item }) => (
-          <HighlightCard highlight={item} onPress={() => router.push(`/highlight/${item.id}`)} />
+          <HighlightCard
+            highlight={item}
+            onPress={() => router.push(`/highlight/${item.id}`)}
+          />
         )}
         ListEmptyComponent={
-          <Text style={{ padding: 24, color: colors.textMuted, textAlign: 'center' }}>
-            No highlights yet for this book.
-          </Text>
+          <EmptyState
+            icon="bookmark-outline"
+            title="No highlights from this book yet"
+            message="Capture a screenshot and pick this book on the review screen."
+          />
         }
       />
     </View>

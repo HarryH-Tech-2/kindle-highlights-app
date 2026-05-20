@@ -20,7 +20,9 @@ export type GradientBackground = {
 export type PhotoBackground = {
   kind: 'photo';
   id: string;
-  source: number; // require()'d asset
+  // Either a bundled asset (require()'d → number) or a runtime URI such as
+  // a data: URL returned from the AI background generator.
+  source: number | { uri: string };
   textColor: 'light' | 'dark';
 };
 

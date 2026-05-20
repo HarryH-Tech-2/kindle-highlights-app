@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
@@ -7,7 +8,8 @@ import * as Tags from '@/src/db/tags';
 import { useTagsWithCounts } from '@/src/hooks/useTags';
 import { EmptyState } from '@/src/components/EmptyState';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { accentFor } from '@/src/theme/colors';
+import { accentFor, fonts } from '@/src/theme/colors';
+import { Platform } from 'react-native';
 import { scheduleSync } from '@/src/sync/scheduler';
 
 export default function TagsList() {
@@ -44,20 +46,42 @@ export default function TagsList() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View
         style={{
           paddingHorizontal: 20,
-          paddingTop: 20,
+          paddingTop: 40,
           paddingBottom: 12,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
-        <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text, letterSpacing: -0.3 }}>
-          Tags
-        </Text>
+        <View>
+          <Text
+            style={{
+              fontFamily: fonts.sans,
+              fontSize: 11,
+              fontWeight: '600',
+              letterSpacing: 1.6,
+              textTransform: 'uppercase',
+              color: colors.textMuted,
+            }}
+          >
+            Filed under
+          </Text>
+          <Text
+            style={{
+              fontFamily: fonts.serif,
+              fontSize: 28,
+              color: colors.text,
+              marginTop: 2,
+              letterSpacing: -0.4,
+            }}
+          >
+            Tags
+          </Text>
+        </View>
         <Pressable
           onPress={() => setCreating(true)}
           hitSlop={10}
@@ -65,22 +89,34 @@ export default function TagsList() {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 6,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 9,
+            borderRadius: 999,
             backgroundColor: colors.primary,
-            opacity: pressed ? 0.85 : 1,
+            opacity: pressed ? 0.88 : 1,
           })}
         >
-          <Ionicons name="add" size={18} color={colors.primaryText} />
-          <Text style={{ color: colors.primaryText, fontWeight: '600', fontSize: 14 }}>
+          <Ionicons name="add" size={17} color={colors.primaryText} />
+          <Text
+            style={{
+              fontFamily: fonts.sans,
+              color: colors.primaryText,
+              fontWeight: '700',
+              fontSize: 13,
+              letterSpacing: 0.3,
+            }}
+          >
             New tag
           </Text>
         </Pressable>
       </View>
 
       {tags.length === 0 ? (
-        <EmptyState message="Tags you add will appear here." />
+        <EmptyState
+          icon="pricetag-outline"
+          title="No tags yet"
+          message="Tag highlights to find them later by theme — mortality, craft, parenting, anything."
+        />
       ) : (
         <FlatList
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, gap: 10 }}
@@ -97,29 +133,59 @@ export default function TagsList() {
                   backgroundColor: colors.surface,
                   borderRadius: 14,
                   padding: 16,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.85 : 1,
-                  gap: 12,
+                  opacity: pressed ? 0.9 : 1,
+                  gap: 14,
+                  ...Platform.select({
+                    ios: {
+                      shadowColor: colors.shadow,
+                      shadowOpacity: 0.05,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 3 },
+                    },
+                    android: { elevation: 1 },
+                  }),
                 })}
               >
                 <View
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 12,
-                    backgroundColor: accent + '22',
+                    width: 38,
+                    height: 38,
+                    borderRadius: 999,
+                    backgroundColor: accent + '24',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: accent, fontWeight: '700', fontSize: 16 }}>#</Text>
+                  <Text
+                    style={{
+                      fontFamily: fonts.serif,
+                      color: accent,
+                      fontWeight: '700',
+                      fontSize: 18,
+                    }}
+                  >
+                    #
+                  </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
+                  <Text
+                    style={{
+                      fontFamily: fonts.serif,
+                      fontSize: 17,
+                      fontWeight: '600',
+                      color: colors.text,
+                    }}
+                  >
                     {item.name}
                   </Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
+                  <Text
+                    style={{
+                      fontFamily: fonts.sans,
+                      color: colors.textMuted,
+                      fontSize: 13,
+                      marginTop: 2,
+                    }}
+                  >
                     {item.count} highlight{item.count === 1 ? '' : 's'}
                   </Text>
                 </View>
@@ -216,6 +282,6 @@ export default function TagsList() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
