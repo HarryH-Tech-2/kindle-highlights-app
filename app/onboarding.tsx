@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, Pressable, SafeAreaView } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { getDb } from '@/src/db/client';
 import { markOnboardingSeen } from '@/src/db/meta';
@@ -49,9 +50,12 @@ export default function Onboarding() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+    <SafeAreaView
+      edges={['top', 'bottom']}
+      style={{ flex: 1, backgroundColor: colors.bg }}
+    >
       <ParticleBackground />
-      <View style={{ flex: 1, padding: 24, justifyContent: 'space-between' }}>
+      <View style={{ flex: 1, padding: 24, paddingBottom: 32, justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 32 }}>
           {!isLast && (
             <Pressable onPress={finish} hitSlop={12}>

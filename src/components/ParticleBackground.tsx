@@ -43,16 +43,16 @@ function makeParticles(count: number, width: number, height: number): ParticleSp
       startY,
       endX: startX + driftX,
       endY: startY + driftY,
-      size: rand(6, 18),
-      duration: rand(9000, 16000),
+      size: rand(3, 9),
+      duration: rand(6500, 11000),
       delay: rand(0, 4000),
-      baseOpacity: rand(0.18, 0.45),
-      pulseDuration: rand(2200, 4200),
+      baseOpacity: rand(0.22, 0.5),
+      pulseDuration: rand(1800, 3400),
     };
   });
 }
 
-export function ParticleBackground({ count = 18 }: { count?: number }) {
+export function ParticleBackground({ count = 32 }: { count?: number }) {
   // Use the screen dimensions at mount; we don't react to rotation since the
   // onboarding screen is portrait-locked anyway.
   const { width, height } = Dimensions.get('window');
@@ -111,9 +111,9 @@ function Particle({ spec }: { spec: ParticleSpec }) {
           width: spec.size,
           height: spec.size,
           borderRadius: spec.size / 2,
-          backgroundColor: '#7FB8FF', // light blue
+          backgroundColor: '#ffc89c', // warm peach
           // Soft glow so particles read as luminous rather than solid dots.
-          shadowColor: '#7FB8FF',
+          shadowColor: '#ffc89c',
           shadowOpacity: 0.9,
           shadowRadius: spec.size,
           shadowOffset: { width: 0, height: 0 },

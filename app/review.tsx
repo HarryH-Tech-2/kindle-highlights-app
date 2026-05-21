@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
 import * as Highlights from '@/src/db/highlights';
@@ -20,12 +21,19 @@ import { BookPicker } from '@/src/components/BookPicker';
 import { TagInput } from '@/src/components/TagInput';
 import { HighlightStylePicker } from '@/src/components/HighlightStylePicker';
 import { confirm } from '@/src/components/ConfirmDialog';
+import { FeedbackPrompt } from '@/src/components/FeedbackPrompt';
+import {
+  getUsageCount,
+  hasPromptedFeedback,
+  markFeedbackPrompted,
+} from '@/src/db/meta';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { scheduleSync } from '@/src/sync/scheduler';
 
 export default function Review() {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ text?: string; id?: string }>();
   const editingId = params.id ? Number(params.id) : null;
 
@@ -38,6 +46,7 @@ export default function Review() {
   const [allTagNames, setAllTagNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(editingId != null);
   const [saving, setSaving] = useState(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -65,15 +74,16 @@ export default function Review() {
     if (!canSave) return;
     setSaving(true);
     try {
+      const db = await getDb();
       if (editingId != null) {
-        await Highlights.updateHighlight(await getDb(), editingId, {
+        await Highlights.updateHighlight(db, editingId, {
           text: text.trim(),
           note: note.trim() || null,
           tag_names: tagNames,
           style,
         });
       } else {
-        await Highlights.createHighlight(await getDb(), {
+        await Highlights.createHighlight(db, {
           book_id: bookId!,
           text: text.trim(),
           note: note.trim() || null,
@@ -82,10 +92,29 @@ export default function Review() {
         });
       }
       scheduleSync();
+
+      // After the user's second highlight ever, ask for feedback once.
+      // The modal's onClose handler navigates home — we don't want to
+      // unmount this screen before the modal can render.
+      if (editingId == null) {
+        const count = await getUsageCount(db);
+        const alreadyAsked = await hasPromptedFeedback(db);
+        if (count === 2 && !alreadyAsked) {
+          await markFeedbackPrompted(db);
+          setFeedbackVisible(true);
+          return;
+        }
+      }
+
       router.replace('/');
     } finally {
       setSaving(false);
     }
+  };
+
+  const onFeedbackClose = () => {
+    setFeedbackVisible(false);
+    router.replace('/');
   };
 
   const onDiscard = async () => {
@@ -228,7 +257,7 @@ export default function Review() {
         style={{
           paddingHorizontal: 20,
           paddingTop: 12,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+          paddingBottom: Math.max(insets.bottom, 16),
           backgroundColor: colors.bg,
           borderTopWidth: 1,
           borderTopColor: colors.border,
@@ -298,6 +327,8 @@ export default function Review() {
           )}
         </Pressable>
       </View>
+
+      <FeedbackPrompt visible={feedbackVisible} onClose={onFeedbackClose} />
     </KeyboardAvoidingView>
   );
 }

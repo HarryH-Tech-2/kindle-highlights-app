@@ -15,7 +15,7 @@ module.exports = {
     slug: 'kindle-highlights',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/images/kindle-text-extraction-icon.png',
+    icon: './assets/images/app-icon.png',
     scheme: 'myapp',
     userInterfaceStyle: 'automatic',
     splash: {
@@ -40,7 +40,7 @@ module.exports = {
         'com.android.vending.BILLING',
       ],
       adaptiveIcon: {
-        foregroundImage: './assets/images/kindle-text-extraction-icon.png',
+        foregroundImage: './assets/images/app-icon.png',
         backgroundColor: '#ffffff',
       },
     },

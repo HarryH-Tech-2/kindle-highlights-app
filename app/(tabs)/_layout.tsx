@@ -1,10 +1,16 @@
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { fonts } from '@/src/theme/colors';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  // Lift the tab bar above the Android system nav buttons (and the iOS home
+  // indicator). We always reserve at least 8pt below the icons so the bar
+  // doesn't feel cramped on devices without an inset.
+  const extraBottom = Math.max(insets.bottom, 8);
   return (
     <Tabs
       screenOptions={{
@@ -13,11 +19,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopWidth: 0,
-          // The capture pill on the home screen floats above the tab bar, so
-          // we add a touch of vertical padding here for breathing room.
-          paddingBottom: 8,
+          paddingBottom: extraBottom,
           paddingTop: 8,
-          height: 68,
+          height: 60 + extraBottom,
           // Soft elevation in lieu of a hard border line.
           shadowColor: colors.shadow,
           shadowOpacity: 0.06,

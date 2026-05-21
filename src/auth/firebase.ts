@@ -131,6 +131,47 @@ export async function signInWithGoogle(): Promise<AuthUser | null> {
   }
 }
 
+// Email/password sign-in. Throws on bad credentials; the caller is responsible
+// for mapping firebase error codes (auth/invalid-credential, auth/user-not-found,
+// auth/wrong-password, auth/too-many-requests) into user-friendly messages.
+export async function signInWithEmail(
+  email: string,
+  password: string
+): Promise<AuthUser | null> {
+  const auth = loadAuth();
+  const userCred = (await auth.signInWithEmailAndPassword(
+    email.trim(),
+    password
+  )) as unknown as { user: FirebaseUser };
+  return toAuthUser(userCred.user);
+}
+
+// Creates a new Firebase Auth user with email/password. Throws on
+// auth/email-already-in-use, auth/invalid-email, auth/weak-password.
+// If `displayName` is provided, we also write it to the user profile so
+// it shows up in Settings.
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  displayName?: string
+): Promise<AuthUser | null> {
+  const auth = loadAuth();
+  const userCred = (await auth.createUserWithEmailAndPassword(
+    email.trim(),
+    password
+  )) as unknown as {
+    user: FirebaseUser & { updateProfile?: (p: { displayName?: string }) => Promise<void> };
+  };
+  if (displayName && displayName.trim() && userCred.user.updateProfile) {
+    try {
+      await userCred.user.updateProfile({ displayName: displayName.trim() });
+    } catch {
+      // Profile name is nice-to-have — don't fail the whole signup over it.
+    }
+  }
+  return toAuthUser(userCred.user);
+}
+
 export async function signOut(): Promise<void> {
   const auth = loadAuth();
   // Best-effort Google revocation; firebase signOut is the source of truth.

@@ -32,7 +32,7 @@ export default function Settings() {
   const router = useRouter();
   const { colors, mode, setMode } = useTheme();
   const { user } = useAuthUser();
-  const [busy, setBusy] = useState<null | 'export' | 'clear' | 'signout' | 'sync' | 'delete'>(null);
+  const [busy, setBusy] = useState<null | 'export' | 'signout' | 'sync' | 'delete'>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
 
   useEffect(() => {
@@ -88,36 +88,6 @@ export default function Settings() {
     } finally {
       setBusy(null);
     }
-  };
-
-  const handleClearData = () => {
-    Alert.alert(
-      'Clear local data?',
-      'This deletes every book, highlight, and tag stored on this device. ' +
-        'Anything backed up to your account stays safe and will re-sync on next login.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete everything',
-          style: 'destructive',
-          onPress: async () => {
-            setBusy('clear');
-            try {
-              const db = await getDb();
-              await db.execAsync('DELETE FROM highlight_tags;');
-              await db.execAsync('DELETE FROM highlights;');
-              await db.execAsync('DELETE FROM tags;');
-              await db.execAsync('DELETE FROM books;');
-              Alert.alert('Cleared', 'All local highlights have been removed.');
-            } catch (e: any) {
-              Alert.alert('Clear failed', e?.message ?? 'Unknown error');
-            } finally {
-              setBusy(null);
-            }
-          },
-        },
-      ]
-    );
   };
 
   const handleSignOut = () => {
@@ -331,14 +301,6 @@ export default function Settings() {
           hint="Save as Markdown"
           onPress={exportAll}
           busy={busy === 'export'}
-        />
-        <Row
-          icon="trash-outline"
-          label="Clear local data"
-          hint="Delete books, highlights, and tags on this device"
-          onPress={handleClearData}
-          busy={busy === 'clear'}
-          danger
         />
       </Section>
 

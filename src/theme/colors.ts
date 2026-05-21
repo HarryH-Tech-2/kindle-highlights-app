@@ -60,8 +60,8 @@ export const lightColors: ColorTokens = {
   textSubtle: '#a89e8c',
   // Borders are barely there — paper edges, not UI dividers.
   border: '#e3d9c5',
-  // Muted forest. The only saturated color on the page by default.
-  primary: '#3f6b4d',
+  // Warm orange. The only saturated color on the page by default.
+  primary: '#ffa052',
   primaryText: '#fbf6ec',
   // Oxblood accent for emphasis (used very sparingly).
   accent: '#8a3a2e',
@@ -74,7 +74,7 @@ export const lightColors: ColorTokens = {
   // Desaturated, paper-friendly accent palette for book stripes. These are
   // tonally similar enough that they sit on the page instead of fighting it.
   accentPalette: [
-    '#3f6b4d', // forest
+    '#ffa052', // warm orange (brand)
     '#8a3a2e', // oxblood
     '#7a6a3e', // mustard
     '#3e5c7a', // dusty blue

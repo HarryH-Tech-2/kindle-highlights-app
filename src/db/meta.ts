@@ -29,6 +29,7 @@ export async function setMeta(db: DbExec, key: string, value: string): Promise<v
 const ONBOARDING_KEY = 'onboarding_seen';
 const SUBSCRIBED_KEY = 'subscribed';
 const SKIP_CAPTURE_TIPS_KEY = 'skip_capture_tips';
+const FEEDBACK_PROMPTED_KEY = 'feedback_prompted';
 
 export const FREE_EXTRACTION_LIMIT = 10;
 
@@ -70,6 +71,17 @@ export async function hasDismissedCaptureTips(db: DbExec): Promise<boolean> {
 
 export async function setCaptureTipsDismissed(db: DbExec): Promise<void> {
   await setMeta(db, SKIP_CAPTURE_TIPS_KEY, 'true');
+}
+
+// Feedback prompt — shown once, after the user creates their second highlight.
+// We persist a flag so we never bug them twice. Returning true means we've
+// already asked (caller should not re-prompt).
+export async function hasPromptedFeedback(db: DbExec): Promise<boolean> {
+  return (await getMeta(db, FEEDBACK_PROMPTED_KEY)) === 'true';
+}
+
+export async function markFeedbackPrompted(db: DbExec): Promise<void> {
+  await setMeta(db, FEEDBACK_PROMPTED_KEY, 'true');
 }
 
 export async function setSubscribed(db: DbExec, subscribed: boolean): Promise<void> {

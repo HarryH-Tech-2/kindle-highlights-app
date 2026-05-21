@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
@@ -54,6 +55,7 @@ const BENEFITS: Array<{
 export default function Paywall() {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [offer, setOffer] = useState<SubscriptionOffer | null>(null);
   const [loadingOffer, setLoadingOffer] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -111,7 +113,7 @@ export default function Paywall() {
   return (
     <ScrollView
       style={{ backgroundColor: colors.bg }}
-      contentContainerStyle={{ padding: 24, gap: 24 }}
+      contentContainerStyle={{ padding: 24, gap: 24, paddingBottom: 24 + insets.bottom + 16 }}
     >
       <View style={{ gap: 10 }}>
         <Text style={{ fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5 }}>

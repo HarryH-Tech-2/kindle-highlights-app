@@ -155,7 +155,16 @@ function RootLayoutInner() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="capture" options={{ title: 'Capture' }} />
       <Stack.Screen name="review" options={{ title: 'Review' }} />
-      <Stack.Screen name="book/[id]" options={{ title: 'Book' }} />
+      <Stack.Screen
+        name="book/[id]"
+        options={{
+          title: 'Book',
+          // Books "open" upward into view — feels like flipping a cover open
+          // rather than the default horizontal push.
+          animation: 'slide_from_bottom',
+          animationDuration: 320,
+        }}
+      />
       <Stack.Screen name="highlight/[id]" options={{ title: 'Highlight' }} />
       <Stack.Screen name="beautify/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="tag/[name]" options={{ title: 'Tag' }} />

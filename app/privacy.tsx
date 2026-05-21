@@ -22,7 +22,7 @@ const PRIVACY: Section[] = [
     icon: 'phone-portrait-outline',
     heading: 'Where your highlights live',
     body:
-      'Your books, highlights, notes, and tags are kept in a local SQLite database on your device for fast, offline access. When you are signed in, the same data is also uploaded to our Firebase Firestore backend so it syncs to your other devices. You can export everything as Markdown at any time from Settings, wipe the local copy via Settings → Clear local data, or remove the synced copy by signing out (which also clears local data on this device).',
+      'Your books, highlights, notes, and tags are kept in a local SQLite database on your device for fast, offline access. When you are signed in, the same data is also uploaded to our Firebase Firestore backend so it syncs to your other devices. You can export everything as Markdown at any time from Settings, or remove the synced copy by signing out (which also clears local data on this device).',
   },
   {
     icon: 'camera-outline',

@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import ViewShot, { captureRef } from 'react-native-view-shot';
@@ -44,6 +44,7 @@ import { generateAIBackground, AIBackgroundError } from '@/src/beautify/aiGenera
 export default function Beautify() {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const hid = Number(id);
   const [hl, setHl] = useState<HighlightWithRelations | null>(null);
@@ -294,7 +295,9 @@ export default function Beautify() {
         style={{
           flexDirection: 'row',
           gap: 10,
-          padding: 16,
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 16 + insets.bottom,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           backgroundColor: colors.bg,

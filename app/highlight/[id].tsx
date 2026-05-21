@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Pressable, Platform, Share } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
@@ -22,6 +23,7 @@ function typographicQuotes(s: string): string {
 export default function HighlightDetail() {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const hid = Number(id);
   const [hl, setHl] = useState<HighlightWithRelations | null>(null);
@@ -92,21 +94,6 @@ export default function HighlightDetail() {
             }),
           }}
         >
-          <View
-            pointerEvents="none"
-            style={{ position: 'absolute', top: -60, left: -10 }}
-          >
-            <Text
-              style={{
-                fontSize: 280,
-                lineHeight: 280,
-                fontFamily: fonts.serif,
-                color: colors.quoteGlyph,
-              }}
-            >
-              “
-            </Text>
-          </View>
           <View
             style={{
               position: 'absolute',
@@ -370,7 +357,7 @@ export default function HighlightDetail() {
         style={{
           paddingHorizontal: 20,
           paddingTop: 12,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+          paddingBottom: Math.max(insets.bottom, 16),
           backgroundColor: colors.bg,
           flexDirection: 'row',
           gap: 10,
