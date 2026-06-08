@@ -9,9 +9,10 @@
 
 import { Platform } from 'react-native';
 
-// SKU you create in Google Play Console for the $2/month subscription.
-// Keep this in sync with the product ID in the Play console.
-export const MONTHLY_SUBSCRIPTION_SKU = 'kindle_pro_monthly';
+// SKU you create in Google Play Console for the monthly subscription.
+// Keep this in sync with the Product ID in the Play console.
+// The base plan ID is `monthlypremium1` (referenced via offerToken at purchase time).
+export const MONTHLY_SUBSCRIPTION_SKU = 'premium_monthly_1';
 
 type IapModule = typeof import('react-native-iap');
 
