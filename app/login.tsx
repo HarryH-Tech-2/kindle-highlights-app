@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -19,6 +20,7 @@ import {
   signUpWithEmail,
 } from '@/src/auth/firebase';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { darkColors } from '@/src/theme/colors';
 
 // Login wall shown to signed-out users (routed here by app/_layout.tsx).
 // Supports Google sign-in plus email/password sign-in and account creation;
@@ -53,13 +55,16 @@ function authErrorMessage(e: unknown): string {
 }
 
 export default function LoginScreen() {
-  const { colors } = useTheme();
+  const { colors: _themeColors } = useTheme();
+  // Login always uses the midnight background for brand consistency.
+  const colors = darkColors;
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState<null | 'google' | 'email'>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isSignup = mode === 'signup';
 
@@ -74,6 +79,17 @@ export default function LoginScreen() {
     } finally {
       setBusy(null);
     }
+  };
+
+  const handleForgotPassword = () => {
+    if (busy) return;
+    // Hand off to a dedicated screen so the user isn't staring at their
+    // password field while recovering. We pass the email already typed (if
+    // any) so they don't have to retype it.
+    router.push({
+      pathname: '/forgot-password',
+      params: email.trim() ? { email: email.trim() } : {},
+    });
   };
 
   const handleEmailSubmit = async () => {
@@ -115,7 +131,7 @@ export default function LoginScreen() {
   } as const;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0B0B0F' }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -129,26 +145,20 @@ export default function LoginScreen() {
           }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Hero mark */}
+          {/* Hero mark — the actual app icon so the login screen reads as
+              "this app", not a generic placeholder. Rendered at 88px with
+              rounded corners to match the launcher icon shape. */}
           <View style={{ alignItems: 'center', marginBottom: 32 }}>
-            <View
+            <Image
+              source={require('../assets/images/app-icon.png')}
               style={{
-                width: 88,
-                height: 88,
-                borderRadius: 26,
-                backgroundColor: colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
+                width: 110,
+                height: 110,
+                borderRadius: 24,
                 marginBottom: 20,
-                shadowColor: colors.primary,
-                shadowOpacity: 0.3,
-                shadowRadius: 24,
-                shadowOffset: { width: 0, height: 12 },
-                elevation: 8,
               }}
-            >
-              <Ionicons name="book" size={44} color={colors.primaryText} />
-            </View>
+              resizeMode="contain"
+            />
             <Text
               style={{
                 fontSize: 26,
@@ -158,7 +168,7 @@ export default function LoginScreen() {
                 letterSpacing: -0.5,
               }}
             >
-              {isSignup ? 'Create your account' : 'Welcome back'}
+              {isSignup ? 'Create your account' : 'Welcome'}
             </Text>
             <Text
               style={{
@@ -170,8 +180,8 @@ export default function LoginScreen() {
               }}
             >
               {isSignup
-                ? 'Sync your highlights across devices.'
-                : 'Sign in to access your highlights.'}
+                ? 'Sync your ideas across devices.'
+                : 'Sign in to access your library.'}
             </Text>
           </View>
 
@@ -201,18 +211,42 @@ export default function LoginScreen() {
               editable={!busy}
               style={inputStyle}
             />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={isSignup ? 'Password (6+ characters)' : 'Password'}
-              placeholderTextColor={colors.textSubtle}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete={isSignup ? 'password-new' : 'password'}
-              editable={!busy}
-              style={inputStyle}
-            />
+            {/* Password field with show/hide toggle. The eye icon sits
+                inside the input via absolute positioning; we add right
+                padding to the input so the text never collides with it. */}
+            <View style={{ position: 'relative', justifyContent: 'center' }}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={isSignup ? 'Password (6+ characters)' : 'Password'}
+                placeholderTextColor={colors.textSubtle}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete={isSignup ? 'password-new' : 'password'}
+                editable={!busy}
+                style={[inputStyle, { paddingRight: 44 }]}
+              />
+              <Pressable
+                onPress={() => setShowPassword((v) => !v)}
+                disabled={!!busy}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                style={({ pressed }) => ({
+                  position: 'absolute',
+                  right: 10,
+                  padding: 6,
+                  opacity: busy ? 0.4 : pressed ? 0.5 : 1,
+                })}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={colors.textMuted}
+                />
+              </Pressable>
+            </View>
 
             <Pressable
               onPress={handleEmailSubmit}
@@ -239,6 +273,27 @@ export default function LoginScreen() {
                 </Text>
               )}
             </Pressable>
+
+            {/* Password recovery — only meaningful on sign-in (sign-up
+                doesn't have a password to recover yet). Sends a reset
+                link via Firebase Auth using the email already typed. */}
+            {!isSignup && (
+              <Pressable
+                onPress={handleForgotPassword}
+                disabled={!!busy}
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  alignSelf: 'center',
+                  paddingVertical: 8,
+                  paddingHorizontal: 6,
+                  opacity: busy ? 0.4 : pressed ? 0.6 : 1,
+                })}
+              >
+                <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+                  Forgot password?
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           {/* Toggle between sign-in and sign-up */}

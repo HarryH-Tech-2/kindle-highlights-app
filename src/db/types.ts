@@ -35,11 +35,14 @@ export type Tag = {
   deleted_at: number | null;
 };
 
-// Visual style for a saved highlight. Both fields are optional so the absence
+// Visual style for a saved highlight. All fields are optional so the absence
 // of a value means "use the theme default".
 export type HighlightStyle = {
   color?: string | null;
   italic?: boolean;
+  // Key into the FONT_OPTIONS map (e.g. 'lora', 'mono'). Null/undefined
+  // means use the default font (Space Grotesk).
+  font?: string | null;
 };
 
 export type HighlightWithRelations = Highlight & {

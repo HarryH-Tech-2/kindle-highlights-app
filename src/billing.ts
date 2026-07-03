@@ -66,10 +66,13 @@ export async function getMonthlySubscription(): Promise<SubscriptionOffer | null
   // iOS: localizedPrice on the product itself.
   const androidPrice =
     sub.subscriptionOfferDetails?.[0]?.pricingPhases?.pricingPhaseList?.[0]?.formattedPrice;
-  const priceLabel = androidPrice ?? sub.localizedPrice ?? '$2.00 / month';
+  // Price only — UI appends "/ month" so the cadence isn't baked into
+  // every call site (and so we don't double up when Play already returns
+  // a bare formatted price like "$2.00").
+  const priceLabel = androidPrice ?? sub.localizedPrice ?? '$2.00';
   return {
     productId: sub.productId,
-    title: sub.title ?? 'Highlight Capture Pro',
+    title: sub.title ?? 'Lumio Pro',
     priceLabel,
   };
 }

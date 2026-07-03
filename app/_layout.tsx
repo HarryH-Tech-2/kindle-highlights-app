@@ -1,6 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, usePathname } from 'expo-router';
 import { View, Text, ActivityIndicator } from 'react-native';
+import {
+  useFonts,
+  SpaceGrotesk_300Light,
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_700Bold,
+} from '@expo-google-fonts/space-grotesk';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+} from '@expo-google-fonts/inter';
+import { Lora_400Regular, Lora_400Regular_Italic } from '@expo-google-fonts/lora';
+import { PlayfairDisplay_400Regular } from '@expo-google-fonts/playfair-display';
+import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono';
+import { SourceCodePro_400Regular } from '@expo-google-fonts/source-code-pro';
 import { initDb } from '@/src/db/init';
 import { getDb } from '@/src/db/client';
 import { hasSeenOnboarding } from '@/src/db/meta';
@@ -23,6 +38,7 @@ export default function RootLayout() {
 
 function RootLayoutInner() {
   const router = useRouter();
+  const pathname = usePathname();
   const { colors, isDark } = useTheme();
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -34,6 +50,22 @@ function RootLayoutInner() {
     }
   });
   const [seenOnboarding, setSeenOnboarding] = useState(false);
+  // Load Space Grotesk + Inter up front. The app blocks on `ready`
+  // already for the DB bootstrap; we tie font loading into the same gate so
+  // text never flashes from the system fallback to the loaded family.
+  const [fontsLoaded] = useFonts({
+    SpaceGrotesk_300Light,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Lora_400Regular,
+    Lora_400Regular_Italic,
+    PlayfairDisplay_400Regular,
+    JetBrainsMono_400Regular,
+    SourceCodePro_400Regular,
+  });
   // Tracks whether the user was just on the login wall. Lets us push them into
   // the library after sign-in instead of stranding them on /login.
   const wasSignedOutRef = useRef<boolean>(!user);
@@ -65,10 +97,19 @@ function RootLayoutInner() {
       configureGoogleSignIn();
       unsub = onAuthStateChanged(async (u) => {
         setUser(u);
-        if (!u) return;
         try {
+          // Auth may rehydrate before the bootstrap effect's initDb() resolves
+          // on cold launch. Await initDb here (memoised) so reads below never
+          // hit an un-migrated DB ("no such table: meta").
+          await initDb();
           const db = await getDb();
-          await runSync(db, u.uid);
+          // Re-read the onboarding flag whenever auth changes. The user may
+          // have just finished onboarding immediately before signing in, and
+          // our local state copy of `seenOnboarding` would otherwise be stale
+          // — leading to a "sign in twice" bounce back through /onboarding.
+          const seen = await hasSeenOnboarding(db);
+          setSeenOnboarding(seen);
+          if (u) await runSync(db, u.uid);
         } catch (e) {
           // Background sync failures shouldn't alert the user, but they
           // should be visible in dev logs — silent failures here are the
@@ -85,30 +126,39 @@ function RootLayoutInner() {
   }, []);
 
   // Routing rules, evaluated whenever the relevant state changes:
-  //   1. Haven't finished onboarding → /onboarding
-  //   2. Onboarded but signed out → /login (login wall)
-  //   3. Just signed in (was on login wall) → / (into the library)
-  //   4. Onboarded and signed in → leave them wherever they are
-  // We defer the redirect with setTimeout(0) so the Stack has a chance to mount
-  // before we navigate; otherwise expo-router throws "navigation was not
-  // handled" on cold launch.
+  //   1. Signed in + just came from the login wall → / (into the library)
+  //   2. Signed in (already in the app) → leave them where they are
+  //   3. Signed out + never onboarded → /onboarding
+  //   4. Signed out + onboarded → /login
+  // Auth is checked BEFORE onboarding so a signed-in user is never bounced
+  // back through onboarding because of a stale local flag — the old order
+  // caused "sign in twice" because finishing onboarding wrote the flag to
+  // SQLite but didn't refresh _layout's `seenOnboarding` state.
+  // We defer the redirect with setTimeout(0) so the Stack has a chance to
+  // mount before we navigate; otherwise expo-router throws "navigation was
+  // not handled" on cold launch.
   useEffect(() => {
     if (!ready) return;
+    if (user) {
+      if (wasSignedOutRef.current) {
+        wasSignedOutRef.current = false;
+        const id = setTimeout(() => router.replace('/'), 0);
+        return () => clearTimeout(id);
+      }
+      return;
+    }
     if (!seenOnboarding) {
       const id = setTimeout(() => router.replace('/onboarding'), 0);
       return () => clearTimeout(id);
     }
-    if (!user) {
-      wasSignedOutRef.current = true;
-      const id = setTimeout(() => router.replace('/login'), 0);
-      return () => clearTimeout(id);
-    }
-    if (wasSignedOutRef.current) {
-      wasSignedOutRef.current = false;
-      const id = setTimeout(() => router.replace('/'), 0);
-      return () => clearTimeout(id);
-    }
-  }, [ready, seenOnboarding, user, router]);
+    wasSignedOutRef.current = true;
+    // /forgot-password is a legitimate signed-out destination — the user
+    // reached it intentionally from /login to recover their password.
+    // Bouncing them back to /login here would make the feature unusable.
+    if (pathname === '/forgot-password' || pathname === '/privacy') return;
+    const id = setTimeout(() => router.replace('/login'), 0);
+    return () => clearTimeout(id);
+  }, [ready, seenOnboarding, user, router, pathname]);
 
   if (error) {
     return (
@@ -126,7 +176,7 @@ function RootLayoutInner() {
       </View>
     );
   }
-  if (!ready) {
+  if (!ready || !fontsLoaded) {
     return (
       <View
         style={{
@@ -172,6 +222,7 @@ function RootLayoutInner() {
       <Stack.Screen name="paywall" options={{ title: 'Upgrade' }} />
       <Stack.Screen name="privacy" options={{ title: 'Privacy & terms' }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
     </Stack>
   );
 }

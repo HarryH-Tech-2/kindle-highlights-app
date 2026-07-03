@@ -1,8 +1,8 @@
-# Privacy Policy — Highlight Capture for Books
+# Privacy Policy — Lumio
 
 _Last updated: May 2026_
 
-Highlight Capture for Books ("the app") is built to be lightweight and private. Your highlights live on your device for offline access and, while you are signed in, also sync to your private Firebase account so they follow you across devices. This document explains exactly what data the app handles and how.
+Lumio ("the app") is built to be lightweight and private. Your highlights live on your device for offline access and, while you are signed in, also sync to your private Firebase account so they follow you across devices. This document explains exactly what data the app handles and how.
 
 ## Where your highlights live
 

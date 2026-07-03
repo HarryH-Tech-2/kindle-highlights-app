@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
+import * as StoreReview from 'expo-store-review';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/src/db/client';
@@ -26,24 +27,25 @@ import { useAuthUser } from '@/src/auth/session';
 import { runSync } from '@/src/sync/sync';
 import { deleteAllUserData } from '@/src/sync/firestore';
 
-const FEEDBACK_EMAIL = 'contact@harryh.tech';
-
 export default function Settings() {
   const router = useRouter();
   const { colors, mode, setMode } = useTheme();
   const { user } = useAuthUser();
   const [busy, setBusy] = useState<null | 'export' | 'signout' | 'sync' | 'delete'>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
     if (!user) {
       setLastSyncedAt(null);
+      setSubscribed(false);
       return;
     }
     (async () => {
       try {
         const db = await getDb();
         setLastSyncedAt((await Meta.getLastSyncedAt(db)) || null);
+        setSubscribed(await Meta.isSubscribed(db));
       } catch {
         // ignore
       }
@@ -67,6 +69,14 @@ export default function Settings() {
 
   const exportAll = async () => {
     if (busy) return;
+    // Export is a Pro-only feature. Non-subscribers tapping the row are
+    // routed to the paywall rather than seeing a flat "not subscribed"
+    // alert — matches the pattern used by the capture flow at the
+    // free-tier limit.
+    if (!subscribed) {
+      router.push('/paywall');
+      return;
+    }
     setBusy('export');
     try {
       const db = await getDb();
@@ -170,13 +180,6 @@ export default function Settings() {
         },
       ]
     );
-  };
-
-  const handleFeedback = async () => {
-    const url = `mailto:${FEEDBACK_EMAIL}?subject=Kindle%20Highlights%20feedback`;
-    const supported = await Linking.canOpenURL(url);
-    if (supported) await Linking.openURL(url);
-    else Alert.alert('No email app found', `Send feedback to ${FEEDBACK_EMAIL}`);
   };
 
   return (
@@ -298,39 +301,71 @@ export default function Settings() {
         <Row
           icon="download-outline"
           label="Export all highlights"
-          hint="Save as Markdown"
+          hint={subscribed ? 'Save as Markdown' : 'Pro — save as Markdown'}
           onPress={exportAll}
           busy={busy === 'export'}
+          locked={!subscribed}
         />
       </Section>
 
-      {/* About */}
-      <Section title="About">
-        <Row
-          icon="mail-outline"
-          label="Send feedback"
-          hint="Tell us what you'd love to see"
-          onPress={handleFeedback}
-        />
-        <Row
-          icon="star-outline"
-          label="Rate the app"
-          hint="Help others discover it"
-          onPress={() => {
-            const url = 'market://details?id=com.harry.highlightcapture';
-            Linking.openURL(url).catch(() => {
-              Linking.openURL(
-                'https://play.google.com/store/apps/details?id=com.harry.highlightcapture'
-              );
-            });
-          }}
-        />
-        <Row
-          icon="document-text-outline"
-          label="Privacy & terms"
-          onPress={() => router.push('/privacy')}
-        />
-      </Section>
+      {/* About — extra bottom margin so the rounded card visually
+          separates from the destructive Sign out / Delete actions below
+          and doesn't feel crammed against them. */}
+      <View style={{ marginBottom: 12 }}>
+        <Section title="About">
+          <Row
+            icon="star-outline"
+            label="Rate the app"
+            hint="Help others discover it"
+            onPress={() => {
+              const url = 'market://details?id=com.harry.highlightcapture';
+              Linking.openURL(url).catch(() => {
+                Linking.openURL(
+                  'https://play.google.com/store/apps/details?id=com.harry.highlightcapture'
+                );
+              });
+            }}
+          />
+          <Row
+            icon="document-text-outline"
+            label="Privacy & terms"
+            onPress={() => router.push('/privacy')}
+          />
+        </Section>
+      </View>
+
+      {/* Developer tools — only present in dev builds. __DEV__ is stripped
+          (and the whole branch tree-shaken) in production bundles. */}
+      {__DEV__ && (
+        <Section title="Developer">
+          <Row
+            icon="bug-outline"
+            label="Show onboarding flow"
+            hint="Replay the onboarding screens"
+            onPress={() => router.push('/onboarding')}
+          />
+          <Row
+            icon="star-outline"
+            label="Show review prompt"
+            hint="Trigger the in-app rating dialog"
+            onPress={async () => {
+              try {
+                const available = await StoreReview.isAvailableAsync();
+                if (!available) {
+                  Alert.alert(
+                    'Review prompt unavailable',
+                    'StoreReview.isAvailableAsync() returned false on this device/build.'
+                  );
+                  return;
+                }
+                await StoreReview.requestReview();
+              } catch (e: any) {
+                Alert.alert('Review prompt failed', e?.message ?? 'Unknown error');
+              }
+            }}
+          />
+        </Section>
+      )}
 
       {/* Sign-out */}
       {user && (
@@ -382,7 +417,7 @@ export default function Settings() {
       )}
 
       <Text style={{ color: colors.textSubtle, fontSize: 12, textAlign: 'center' }}>
-        Highlight Capture v{Constants.expoConfig?.version ?? '0.0.0'}
+        Lumio v{Constants.expoConfig?.version ?? '0.0.0'}
       </Text>
     </ScrollView>
     </SafeAreaView>
@@ -427,6 +462,7 @@ function Row({
   onPress,
   busy,
   danger,
+  locked,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
@@ -434,6 +470,7 @@ function Row({
   onPress: () => void;
   busy?: boolean;
   danger?: boolean;
+  locked?: boolean;
 }) {
   const { colors } = useTheme();
   const labelColor = danger ? colors.danger : colors.text;
@@ -464,6 +501,8 @@ function Row({
       </View>
       {busy ? (
         <ActivityIndicator size="small" color={colors.textMuted} />
+      ) : locked ? (
+        <Ionicons name="lock-closed" size={14} color={colors.textSubtle} />
       ) : (
         <Ionicons name="chevron-forward" size={16} color={colors.textSubtle} />
       )}

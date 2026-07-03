@@ -57,31 +57,16 @@ export default function TagsList() {
           justifyContent: 'space-between',
         }}
       >
-        <View>
-          <Text
-            style={{
-              fontFamily: fonts.sans,
-              fontSize: 11,
-              fontWeight: '600',
-              letterSpacing: 1.6,
-              textTransform: 'uppercase',
-              color: colors.textMuted,
-            }}
-          >
-            Filed under
-          </Text>
-          <Text
-            style={{
-              fontFamily: fonts.serif,
-              fontSize: 28,
-              color: colors.text,
-              marginTop: 2,
-              letterSpacing: -0.4,
-            }}
-          >
-            Tags
-          </Text>
-        </View>
+        <Text
+          style={{
+            fontFamily: fonts.serif,
+            fontSize: 28,
+            color: colors.text,
+            letterSpacing: -0.4,
+          }}
+        >
+          Tags
+        </Text>
         <Pressable
           onPress={() => setCreating(true)}
           hitSlop={10}

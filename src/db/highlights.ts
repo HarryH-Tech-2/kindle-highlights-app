@@ -22,6 +22,7 @@ function serializeStyle(style: HighlightStyle | null | undefined): string | null
   const trimmed: HighlightStyle = {};
   if (style.color) trimmed.color = style.color;
   if (style.italic) trimmed.italic = true;
+  if (style.font) trimmed.font = style.font;
   return Object.keys(trimmed).length > 0 ? JSON.stringify(trimmed) : null;
 }
 

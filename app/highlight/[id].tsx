@@ -8,7 +8,7 @@ import * as Highlights from '@/src/db/highlights';
 import type { HighlightWithRelations } from '@/src/db/types';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { accentFor, fonts } from '@/src/theme/colors';
+import { accentFor, fonts, fontFamilyFor } from '@/src/theme/colors';
 import { scheduleSync } from '@/src/sync/scheduler';
 
 function typographicQuotes(s: string): string {
@@ -110,7 +110,7 @@ export default function HighlightDetail() {
             <Text
               selectable
               style={{
-                fontFamily: fonts.serif,
+                fontFamily: fontFamilyFor(hl.styleParsed?.font),
                 fontSize: 22,
                 lineHeight: 34,
                 color: highlightColor,
@@ -357,7 +357,7 @@ export default function HighlightDetail() {
         style={{
           paddingHorizontal: 20,
           paddingTop: 12,
-          paddingBottom: Math.max(insets.bottom, 16),
+          paddingBottom: Math.max(insets.bottom, 16) + 12,
           backgroundColor: colors.bg,
           flexDirection: 'row',
           gap: 10,

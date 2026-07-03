@@ -124,7 +124,7 @@ export default function Privacy() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 28 }}
+      contentContainerStyle={{ padding: 20, paddingBottom: 72, gap: 28 }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
@@ -181,7 +181,7 @@ export default function Privacy() {
               marginTop: 4,
             }}
           >
-            We built Highlight Capture to be lightweight and private. Your
+            We built Lumio to be lightweight and private. Your
             highlights live on your device for offline access and, while you
             are signed in, also sync to your private Firebase account so they
             follow you across devices. Here&apos;s exactly what that means.

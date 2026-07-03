@@ -21,13 +21,14 @@ import { BookPicker } from '@/src/components/BookPicker';
 import { TagInput } from '@/src/components/TagInput';
 import { HighlightStylePicker } from '@/src/components/HighlightStylePicker';
 import { confirm } from '@/src/components/ConfirmDialog';
-import { FeedbackPrompt } from '@/src/components/FeedbackPrompt';
+import * as StoreReview from 'expo-store-review';
 import {
   getUsageCount,
   hasPromptedFeedback,
   markFeedbackPrompted,
 } from '@/src/db/meta';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { fontFamilyFor } from '@/src/theme/colors';
 import { scheduleSync } from '@/src/sync/scheduler';
 
 export default function Review() {
@@ -38,7 +39,13 @@ export default function Review() {
   const editingId = params.id ? Number(params.id) : null;
 
   const { books, create: createBook, refresh: refreshBooks } = useBooks();
-  const [text, setText] = useState(params.text ?? '');
+  // OCR may return multiple highlighted passages from a single photo (e.g. a
+  // paper book page with three highlighter strokes). The model separates them
+  // with a blank line; we split on that and keep each as its own editable
+  // passage so the user can review them one at a time and save them as
+  // separate highlight records.
+  const [passages, setPassages] = useState<string[]>(() => splitPassages(params.text ?? ''));
+  const [activeIdx, setActiveIdx] = useState(0);
   const [bookId, setBookId] = useState<number | null>(null);
   const [tagNames, setTagNames] = useState<string[]>([]);
   const [note, setNote] = useState('');
@@ -46,7 +53,17 @@ export default function Review() {
   const [allTagNames, setAllTagNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(editingId != null);
   const [saving, setSaving] = useState(false);
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
+
+  const isMulti = passages.length > 1;
+  const text = passages[activeIdx] ?? '';
+  const setText = (next: string) => {
+    setPassages((prev) => prev.map((p, i) => (i === activeIdx ? next : p)));
+  };
+  const removeActivePassage = () => {
+    if (passages.length <= 1) return;
+    setPassages((prev) => prev.filter((_, i) => i !== activeIdx));
+    setActiveIdx((i) => Math.max(0, Math.min(i, passages.length - 2)));
+  };
 
   useEffect(() => {
     (async () => {
@@ -56,7 +73,10 @@ export default function Review() {
       if (editingId != null) {
         const h = await Highlights.getHighlight(db, editingId);
         if (h) {
-          setText(h.text);
+          // When editing, we always work with exactly one passage — the
+          // original split happens only on first capture.
+          setPassages([h.text]);
+          setActiveIdx(0);
           setBookId(h.book_id);
           setTagNames(h.tags.map((tg) => tg.name));
           setNote(h.note ?? '');
@@ -67,7 +87,8 @@ export default function Review() {
     })();
   }, [editingId]);
 
-  const canSave = text.trim().length > 0 && bookId != null && !saving;
+  const trimmedPassages = passages.map((p) => p.trim()).filter((p) => p.length > 0);
+  const canSave = trimmedPassages.length > 0 && bookId != null && !saving;
   const isEditing = editingId != null;
 
   const onSave = async () => {
@@ -77,32 +98,50 @@ export default function Review() {
       const db = await getDb();
       if (editingId != null) {
         await Highlights.updateHighlight(db, editingId, {
-          text: text.trim(),
+          text: trimmedPassages[0],
           note: note.trim() || null,
           tag_names: tagNames,
           style,
         });
       } else {
-        await Highlights.createHighlight(db, {
-          book_id: bookId!,
-          text: text.trim(),
-          note: note.trim() || null,
-          tag_names: tagNames,
-          style,
-        });
+        // Save each non-empty passage as its own highlight record, sharing
+        // the same book, tags, note, and style. For single-passage capture
+        // this collapses to the original one-highlight behavior.
+        for (const t of trimmedPassages) {
+          await Highlights.createHighlight(db, {
+            book_id: bookId!,
+            text: t,
+            note: note.trim() || null,
+            tag_names: tagNames,
+            style,
+          });
+        }
       }
       scheduleSync();
 
-      // After the user's second highlight ever, ask for feedback once.
-      // The modal's onClose handler navigates home — we don't want to
-      // unmount this screen before the modal can render.
+      // After the user's second highlight ever, ask for a review once via
+      // the native Play In-App Review API. requestReview() opens a system
+      // overlay (when Play's quota allows) on top of whatever screen we
+      // navigate to next — it doesn't block, so we can fire-and-forget
+      // and route home immediately. Using >= 2 (rather than === 2) so a
+      // multi-passage capture that vaults the count past 2 in a single
+      // save still triggers the ask. We still gate on a local "asked
+      // once" flag because Play silently no-ops the request once its own
+      // quota is hit, and we don't want to spam the call on every save.
       if (editingId == null) {
         const count = await getUsageCount(db);
         const alreadyAsked = await hasPromptedFeedback(db);
-        if (count === 2 && !alreadyAsked) {
+        if (count >= 2 && !alreadyAsked) {
           await markFeedbackPrompted(db);
-          setFeedbackVisible(true);
-          return;
+          try {
+            if (await StoreReview.isAvailableAsync()) {
+              // Fire-and-forget — the system overlay manages itself and
+              // dismisses without any callback. Errors here are non-fatal.
+              void StoreReview.requestReview();
+            }
+          } catch {
+            // Best effort — never block save flow on review SDK hiccups.
+          }
         }
       }
 
@@ -110,11 +149,6 @@ export default function Review() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const onFeedbackClose = () => {
-    setFeedbackVisible(false);
-    router.replace('/');
   };
 
   const onDiscard = async () => {
@@ -144,6 +178,7 @@ export default function Review() {
   }
 
   const previewColor = style?.color ?? colors.text;
+  const previewFont = fontFamilyFor(style?.font);
 
   return (
     <KeyboardAvoidingView
@@ -174,8 +209,75 @@ export default function Review() {
           </Text>
         </View>
 
-        {/* Highlight text — the hero field */}
-        <SectionCard colors={colors} icon="text" title="Highlight">
+        {/* Highlight text — the hero field. When the OCR returned multiple
+            marked passages, a chip row above the input lets the user flip
+            between them; each chip edits its own passage and they all save
+            as separate highlight records sharing the metadata below. */}
+        <SectionCard
+          colors={colors}
+          icon="text"
+          title="Highlight"
+          subtitle={
+            isMulti
+              ? `${passages.length} passages detected — review and save each one`
+              : undefined
+          }
+        >
+          {isMulti && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                flexWrap: 'wrap',
+              }}
+            >
+              {passages.map((_, i) => (
+                <Pressable
+                  key={i}
+                  onPress={() => setActiveIdx(i)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor:
+                      i === activeIdx ? colors.primary : colors.surfaceAlt,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color:
+                        i === activeIdx ? colors.primaryText : colors.textMuted,
+                      fontSize: 12,
+                      fontWeight: '700',
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    {i + 1}
+                  </Text>
+                </Pressable>
+              ))}
+              <View style={{ flex: 1 }} />
+              <Pressable
+                onPress={removeActivePassage}
+                hitSlop={10}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  paddingHorizontal: 8,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Ionicons name="trash-outline" size={14} color={colors.danger} />
+                <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '600' }}>
+                  Remove
+                </Text>
+              </Pressable>
+            </View>
+          )}
           <TextInput
             value={text}
             onChangeText={setText}
@@ -190,6 +292,7 @@ export default function Review() {
               borderWidth: 1,
               borderColor: colors.border,
               color: previewColor,
+              fontFamily: previewFont,
               fontStyle: style?.italic ? 'italic' : 'normal',
               fontSize: 17,
               lineHeight: 25,
@@ -257,7 +360,7 @@ export default function Review() {
         style={{
           paddingHorizontal: 20,
           paddingTop: 12,
-          paddingBottom: Math.max(insets.bottom, 16),
+          paddingBottom: Math.max(insets.bottom, 16) + 12,
           backgroundColor: colors.bg,
           borderTopWidth: 1,
           borderTopColor: colors.border,
@@ -321,16 +424,29 @@ export default function Review() {
                   fontSize: 16,
                 }}
               >
-                {isEditing ? 'Save changes' : 'Save highlight'}
+                {isEditing
+                  ? 'Save changes'
+                  : trimmedPassages.length > 1
+                    ? `Save ${trimmedPassages.length} highlights`
+                    : 'Save highlight'}
               </Text>
             </>
           )}
         </Pressable>
       </View>
 
-      <FeedbackPrompt visible={feedbackVisible} onClose={onFeedbackClose} />
     </KeyboardAvoidingView>
   );
+}
+
+// The OCR prompt separates multiple highlighted passages with a blank line.
+// We split on one or more blank lines so each distinct marked region becomes
+// its own editable passage. Single-passage captures collapse to a one-item
+// array, and empty input collapses to a single empty string so the editor
+// always renders at least one field.
+function splitPassages(raw: string): string[] {
+  const parts = raw.split(/\n\s*\n+/).map((s) => s.trim()).filter((s) => s.length > 0);
+  return parts.length > 0 ? parts : [raw];
 }
 
 // A consistent surface for each form section. Surfacing the icon + title at

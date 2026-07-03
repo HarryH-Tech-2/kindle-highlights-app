@@ -595,7 +595,7 @@ function Card({
                 textTransform: 'uppercase',
               }}
             >
-              Highlight Capture
+              Lumio
             </Text>
           </View>
         </View>

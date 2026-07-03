@@ -13,6 +13,7 @@
 
 import { getCurrentUser } from '@/src/auth/firebase';
 import { getDb } from '@/src/db/client';
+import { initDb } from '@/src/db/init';
 import { runSync } from './sync';
 
 // 800ms balances "feels instant" against "doesn't fire on every keystroke".
@@ -60,6 +61,9 @@ async function runScheduled(uid: string): Promise<void> {
   }
   inFlight = (async () => {
     try {
+      // Ensure migrations have run — guards against the rare case where a
+      // mutation fires before the bootstrap effect's initDb() resolves.
+      await initDb();
       const db = await getDb();
       await runSync(db, uid);
     } catch (e) {

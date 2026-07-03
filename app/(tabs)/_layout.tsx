@@ -10,7 +10,7 @@ export default function TabsLayout() {
   // Lift the tab bar above the Android system nav buttons (and the iOS home
   // indicator). We always reserve at least 8pt below the icons so the bar
   // doesn't feel cramped on devices without an inset.
-  const extraBottom = Math.max(insets.bottom, 8);
+  const extraBottom = Math.max(insets.bottom, 8) + 12;
   return (
     <Tabs
       screenOptions={{

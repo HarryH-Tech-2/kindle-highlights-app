@@ -2,10 +2,11 @@ import { Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { HighlightStyle } from '@/src/db/types';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { FONT_OPTIONS } from '@/src/theme/colors';
 
 // Small inline picker shown in the review screen. We keep the option set
-// deliberately tight (a handful of curated swatches + an italic toggle) so
-// the UI stays self-explanatory and we don't end up with a color wheel.
+// deliberately tight (a handful of curated swatches + font choices + an
+// italic toggle) so the UI stays self-explanatory.
 
 type Props = {
   value: HighlightStyle | null;
@@ -27,21 +28,23 @@ export function HighlightStylePicker({ value, onChange }: Props) {
   const { colors } = useTheme();
   const currentColor = value?.color ?? null;
   const italic = !!value?.italic;
+  const currentFont = value?.font ?? null;
 
   const update = (patch: Partial<HighlightStyle>) => {
     const merged: HighlightStyle = {
       color: value?.color ?? null,
       italic: value?.italic ?? false,
+      font: value?.font ?? null,
       ...patch,
     };
     // Collapse to null when nothing is set so we don't persist meaningless
     // empty objects.
-    const isDefault = !merged.color && !merged.italic;
+    const isDefault = !merged.color && !merged.italic && !merged.font;
     onChange(isDefault ? null : merged);
   };
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={{ gap: 14 }}>
       {/* Color swatches */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {COLORS.map((c) => {
@@ -77,6 +80,46 @@ export function HighlightStylePicker({ value, onChange }: Props) {
               />
               <Text style={{ color: colors.text, fontSize: 13, fontWeight: '500' }}>
                 {c.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Font picker */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {FONT_OPTIONS.map((f) => {
+          const selected =
+            (currentFont ?? 'default') === f.key ||
+            (!currentFont && f.key === 'default');
+          return (
+            <Pressable
+              key={f.key}
+              onPress={() =>
+                update({ font: f.key === 'default' ? null : f.key })
+              }
+              style={({ pressed }) => ({
+                paddingVertical: 8,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                borderWidth: selected ? 2 : 1,
+                borderColor: selected ? colors.primary : colors.border,
+                backgroundColor: selected
+                  ? colors.primary + '14'
+                  : colors.surface,
+                opacity: pressed ? 0.7 : 1,
+              })}
+              hitSlop={4}
+            >
+              <Text
+                style={{
+                  fontFamily: f.family,
+                  color: selected ? colors.primary : colors.text,
+                  fontSize: 14,
+                  fontWeight: '500',
+                }}
+              >
+                {f.label}
               </Text>
             </Pressable>
           );

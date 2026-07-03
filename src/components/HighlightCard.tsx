@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { HighlightWithRelations } from '@/src/db/types';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { accentFor, fonts } from '@/src/theme/colors';
+import { accentFor, fonts, fontFamilyFor } from '@/src/theme/colors';
 
 // Replaces straight quotes / hyphens with their typographic equivalents
 // so book quotes read like book quotes, not like log lines.
@@ -75,7 +75,7 @@ export function HighlightCard({
         <Text
           numberOfLines={5}
           style={{
-            fontFamily: fonts.serif,
+            fontFamily: fontFamilyFor(highlight.styleParsed?.font),
             fontSize: 17,
             lineHeight: 26,
             color: styleColor,

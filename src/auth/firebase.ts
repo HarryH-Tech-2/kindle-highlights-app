@@ -172,6 +172,17 @@ export async function signUpWithEmail(
   return toAuthUser(userCred.user);
 }
 
+// Sends a password reset email via Firebase Auth. Caller maps error codes
+// (auth/invalid-email, auth/user-not-found, auth/too-many-requests) to
+// human messages. Note: with email enumeration protection enabled in the
+// Firebase Console (recommended), this call will succeed for non-existent
+// addresses too — we still show the same "if an account exists, we sent
+// you a link" confirmation either way to avoid leaking account existence.
+export async function sendPasswordReset(email: string): Promise<void> {
+  const auth = loadAuth();
+  await auth.sendPasswordResetEmail(email.trim());
+}
+
 export async function signOut(): Promise<void> {
   const auth = loadAuth();
   // Best-effort Google revocation; firebase signOut is the source of truth.

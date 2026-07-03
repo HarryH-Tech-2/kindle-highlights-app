@@ -1,14 +1,14 @@
-# Delete your account — Highlight Capture for Books
+# Delete your account — Lumio
 
 _Last updated: May 2026_
 
-This page explains how to delete your **Highlight Capture for Books** account and the data associated with it.
+This page explains how to delete your **Lumio** account and the data associated with it.
 
 ## Delete from inside the app (recommended)
 
 If you still have the app installed and can sign in:
 
-1. Open **Highlight Capture for Books**.
+1. Open **Lumio**.
 2. Tap the **Settings** tab.
 3. Scroll to the bottom of the screen.
 4. Tap **Delete account**.
@@ -52,6 +52,6 @@ The app is free to install and signing in does not create any new billing charge
 
 Deleting your account does **not** automatically cancel your Google Play subscription. If you have an active Pro subscription you should also cancel it via:
 
-- **Google Play app → Profile → Payments & subscriptions → Subscriptions → Highlight Capture for Books → Cancel subscription.**
+- **Google Play app → Profile → Payments & subscriptions → Subscriptions → Lumio → Cancel subscription.**
 
 Cancelling stops future renewals; you keep Pro access for the remainder of the current billing period.

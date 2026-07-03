@@ -120,7 +120,7 @@ export default function Paywall() {
           Go Pro
         </Text>
         <Text style={{ fontSize: 16, lineHeight: 22, color: colors.textMuted }}>
-          Unlock unlimited highlights and the full toolkit for capturing your reading.
+          Unlock unlimited ideas and the full toolkit for remembering what shapes you.
         </Text>
       </View>
 
@@ -162,13 +162,13 @@ export default function Paywall() {
         }}
       >
         <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
-          Highlight Capture Pro
+          Lumio Pro
         </Text>
         <Text style={{ fontSize: 14, color: colors.textMuted }}>
           Billed monthly. Cancel any time.
         </Text>
         <Text style={{ fontSize: 22, fontWeight: '700', marginTop: 4, color: colors.text }}>
-          {loadingOffer ? 'Loading…' : `Just ${offer?.priceLabel ?? '$2.00 / month'}`}
+          {loadingOffer ? 'Loading…' : `Just ${offer?.priceLabel ?? '$2.00'} / month`}
         </Text>
       </View>
 

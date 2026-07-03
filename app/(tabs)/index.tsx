@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Alert,
+  Image,
   Linking,
   View,
   Text,
@@ -23,7 +24,7 @@ import { HighlightCard } from '@/src/components/HighlightCard';
 import { CaptureTipsModal } from '@/src/components/CaptureTipsModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { accentFor, fonts } from '@/src/theme/colors';
+import { accentFor, fonts, fontFamilyFor } from '@/src/theme/colors';
 import {
   FREE_EXTRACTION_LIMIT,
   getUsageCount,
@@ -172,18 +173,24 @@ export default function Library() {
           <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 }}>
             {!showingSearch && (
               <View style={{ marginBottom: 16 }}>
-                {/* Editorial header — serif, low-key. */}
-                <Text
-                  style={{
-                    fontFamily: fonts.serif,
-                    fontSize: 34,
-                    lineHeight: 40,
-                    color: colors.text,
-                    letterSpacing: -0.5,
-                  }}
-                >
-                  Your Highlights
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Image
+                    source={require('../../assets/images/app-icon.png')}
+                    style={{ width: 46, height: 46, borderRadius: 12 }}
+                    resizeMode="contain"
+                  />
+                  <Text
+                    style={{
+                      fontFamily: fonts.serif,
+                      fontSize: 34,
+                      lineHeight: 40,
+                      color: colors.text,
+                      letterSpacing: -0.5,
+                    }}
+                  >
+                    Your Highlights
+                  </Text>
+                </View>
                 <Text
                   style={{
                     fontFamily: fonts.sans,
@@ -471,7 +478,7 @@ function HeroHighlight({
           <Text
             numberOfLines={6}
             style={{
-              fontFamily: fonts.serif,
+              fontFamily: fontFamilyFor(highlight.styleParsed?.font),
               fontSize: 20,
               lineHeight: 30,
               color: styleColor,

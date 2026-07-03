@@ -12,6 +12,7 @@
        images (beautified quote cards), so strip the audio + video perms at
        manifest-merge time. -->
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>

@@ -11,7 +11,7 @@
 
 module.exports = {
   expo: {
-    name: 'Highlight Capture for Books',
+    name: 'Lumio',
     slug: 'kindle-highlights',
     version: '1.0.0',
     orientation: 'portrait',
@@ -21,7 +21,7 @@ module.exports = {
     splash: {
       image: './assets/images/splash.png',
       resizeMode: 'contain',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#0B0B0F',
     },
     ios: {
       supportsTablet: true,
@@ -41,7 +41,7 @@ module.exports = {
       ],
       adaptiveIcon: {
         foregroundImage: './assets/images/app-icon.png',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#0B0B0F',
       },
     },
     web: {
@@ -59,9 +59,9 @@ module.exports = {
         'expo-media-library',
         {
           photosPermission:
-            'Allow Highlight Capture to save beautified quote cards to your photo library.',
+            'Allow Lumio to save beautified quote cards to your photo library.',
           savePhotosPermission:
-            'Allow Highlight Capture to save beautified quote cards to your photo library.',
+            'Allow Lumio to save beautified quote cards to your photo library.',
           isAccessMediaLocationEnabled: false,
         },
       ],
