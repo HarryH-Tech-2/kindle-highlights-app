@@ -40,7 +40,7 @@ module.exports = {
         'com.android.vending.BILLING',
       ],
       adaptiveIcon: {
-        foregroundImage: './assets/images/app-icon.png',
+        foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#0B0B0F',
       },
     },
